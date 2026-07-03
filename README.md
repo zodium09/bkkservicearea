@@ -1,64 +1,85 @@
 # Bangkok Service Area Analysis
 
-เว็บแอป GIS สำหรับวิเคราะห์พื้นที่บริการในกรุงเทพมหานคร โดยใช้ BMA CityMap basemap:
+เว็บแอปพลิเคชัน GIS สำหรับวิเคราะห์พื้นที่บริการ (Service Area) ในกรุงเทพมหานคร โดยใช้โครงข่ายถนนจริง
 
-`https://citymap.bangkok.go.th/citymap/rest/services/Basemap_Service/Basemap1000_32647_H/MapServer`
+## GIS Architecture: PostGIS + pgRouting
 
-## Analysis model
+ระบบนี้ทำงานด้วยสถาปัตยกรรม **PostGIS + pgRouting** เป็นหลักในการวิเคราะห์หาขอบเขตพื้นที่บริการแบบไดนามิก โดยรันการทำงานร่วมกันบน Docker Container:
 
-Service area analysis ในโปรเจกต์นี้หมายถึงการวิเคราะห์ระยะเข้าถึงตามโครงข่ายถนน ไม่ใช่การวาด buffer วงกลมรอบจุดบริการ ระยะที่ผู้ใช้เลือกจะถูกใช้เป็น cost/distance limit บน road network แล้วคำนวณพื้นที่ที่เข้าถึงได้จากเส้นทางถนนจริง
-
-แนวทางนี้ทำให้ผลลัพธ์สะท้อนข้อจำกัดของถนน สะพาน ทางตัน และรูปแบบโครงข่ายเมือง มากกว่ารัศมีทางอากาศแบบวงกลม ดังนั้น polygon ที่ได้อาจไม่สมมาตร และอาจไม่ครอบคลุมพื้นที่ที่อยู่ใกล้ในเชิงระยะตรงแต่เข้าถึงไม่ได้ตามถนน
-
-## Run
-
-```powershell
-npm.cmd install
-npm.cmd run dev
+```
+                       [ FRONTEND ]
+              Vite + React + TypeScript (TSX)
+           (Interactive Leaflet Map rendering)
+                            │
+                  HTTP REST API Requests
+                            │
+                            ▼
+                     [ BACKEND API ]
+               Node.js Express Web Server
+                            │
+                   SQL Queries & pgRouting
+                            │
+                            ▼
+                  [ DATABASE ENGINE ]
+            PostgreSQL 15 + PostGIS + pgRouting
 ```
 
-เปิดเว็บที่ `http://127.0.0.1:5173`
+- **Runtime Engine (PostGIS + pgRouting)**: รับจุดบริการ แปลง Snap ไปยังจุดร่วมแยกเครือข่ายถนนที่ใกล้ที่สุด หาช่วงเส้นทางที่เข้าถึงได้ด้วย pgRouting (`pgr_drivingDistance`) และทำการสร้างขอบเขต Service Area Polygon ด้วย `ST_UnaryUnion` + `ST_Buffer` บน PostgreSQL
+- **QGIS Role (ETL Only)**: ปรับบทบาทของ QGIS ไปเป็นเครื่องมือเตรียมข้อมูล (ETL) ตรวจ Geometry และดาวน์โหลดข้อมูลนำเข้าออฟไลน์เท่านั้น ไม่ได้ใช้งานเป็นตัวรันวิเคราะห์แบบ Dynamic runtime อีกต่อไป
 
-Express API จะรันที่ `http://127.0.0.1:5174` ตามค่าเริ่มต้น และ Vite dev server จะ proxy request จากหน้าเว็บไปยัง API ภายในโปรเจกต์
+---
 
-## Features
+## ขั้นตอนการติดตั้งและใช้งาน (Local Setup)
 
-- แสดงแผนที่ฐานจาก ArcGIS REST service ของกรุงเทพมหานครผ่าน proxy ภายใน
-- เพิ่มจุดบริการด้วยการคลิกบนแผนที่
-- ปรับระยะเข้าถึงและสร้าง service area จาก network analysis บนโครงข่ายถนน
-- วิเคราะห์เขตที่ intersect กับพื้นที่บริการจาก layer เขตการปกครอง
-- ตรวจสถานะ `qgis_process` เพื่อใช้ QGIS Processing เป็น native network-analysis engine เมื่อพร้อมใช้งาน
-- ใช้ JS fallback network engine เมื่อยังไม่มี QGIS หรือยังไม่สามารถเรียก `qgis_process` ได้
-- ส่งออกผลเป็น GeoJSON
-
-## Network analysis engines
-
-### QGIS/qgis_process hook
-
-โปรเจกต์มี hook สำหรับตรวจและเรียกใช้ `qgis_process` ผ่าน API `/api/qgis/status` และ `/api/analyze` เพื่อเปิดทางให้ใช้ QGIS Processing algorithms สำหรับงาน network analysis เช่น shortest path, service area, หรือ reachable area บน road layer
-
-ถ้าติดตั้ง QGIS แล้วแต่ระบบหา `qgis_process` ไม่เจอ ให้ตั้ง environment variable:
-
-
-```powershell
-$env:QGIS_PROCESS="C:\Program Files\QGIS 3.40.0\bin\qgis_process-qgis.bat"
-npm.cmd run dev
+### 1. โคลนโปรเจกต์และติดตั้ง Dependencies
+```bash
+npm install
 ```
 
-เมื่อตรวจพบ QGIS แล้ว response จาก `/api/analyze` จะระบุ engine ที่พร้อมใช้งานและสามารถต่อยอดไปใช้ processing pipeline ของ QGIS ได้ โดยยังคงส่งผลลัพธ์กลับเป็น GeoJSON ให้ frontend แสดงบน Leaflet
+### 2. เริ่มต้นฐานข้อมูลระบบด้วย Docker
+เปิดโปรแกรม Docker (หรือ Docker Desktop) และรันคำสั่งเพื่อสตาร์ทฐานข้อมูล PostGIS + pgRouting:
+```bash
+docker-compose up -d db
+```
+*ตัวแปรสภาพแวดล้อมต่าง ๆ (เช่น รหัสผ่าน โฮสต์ พอร์ต) จะถูกดึงจากไฟล์ `.env` โดยอัตโนมัติ*
 
-### JS fallback network engine
+### 3. นำเข้าข้อมูลเครือข่ายถนนเข้าสู่ PostGIS
+ดึงข้อมูลถนนที่จัดเตรียมไว้แบบออฟไลน์มาใส่ในตาราง `roads_raw`:
+```bash
+node scripts/import-roads-to-postgis.js
+```
 
-หากไม่มี QGIS หรือ `qgis_process` ไม่พร้อมใช้งาน ระบบจะใช้ JS fallback network engine แทน โดยโหลด features ของถนนจาก ArcGIS REST, สร้างกราฟจาก geometry ของเส้นถนน, snap จุดบริการเข้ากับโหนดหรือ segment ที่ใกล้ที่สุด, แล้วคำนวณ reachable network ตามระยะทางที่กำหนด
+### 4. สร้างโครงข่ายเน็ตเวิร์กและโทโพโลยี (Topology)
+สร้างตาราง Node-Vertex เชื่อมต่อจุดแยกถนน พร้อมสร้างดัชนีพิกัดเชิงพื้นที่ (Spatial Index) เพื่อเร่งความเร็วในการคิวรี:
+```bash
+npm run db:topology
+```
 
-fallback นี้มีไว้เพื่อให้พัฒนาและทดสอบได้โดยไม่ต้องติดตั้ง QGIS แต่ยังยึดหลัก network analysis จากโครงข่ายถนนเหมือนกัน ไม่ควรตีความผลลัพธ์เป็น circular buffer
+### 5. รันและทดสอบระบบ
 
-## ArcGIS REST road loading limitations
+#### รันหน้าเว็บและ Express API คู่กัน (Development Mode):
+```bash
+npm run dev
+```
+- หน้าเว็บของแอปพลิเคชันจะรันอยู่ที่: `http://127.0.0.1:5173` (พอร์ต `5173`)
+- ตัว Express API สำหรับรับวิเคราะห์จะทำงานที่พอร์ต `5174` (พอร์ต `5174`)
 
-การโหลดถนนจาก ArcGIS REST มีข้อจำกัดที่ต้องระวัง:
+#### ทดสอบระบบการวิเคราะห์เครือข่ายถนน (API Integration Tests):
+```bash
+npm run test:api
+```
 
-- service อาจจำกัดจำนวน feature ต่อ request จึงอาจต้องแบ่ง extent, pagination, หรือ query ซ้ำหลายรอบ
-- layer ถนนบางชุดอาจไม่ได้เปิด `query` หรือไม่ได้ส่ง geometry ครบถ้วนในรูปแบบที่ต้องใช้สร้าง network graph
-- geometry จาก REST อาจขาด topology ที่จำเป็น เช่น จุดตัดถนนที่ไม่ได้ถูก split เป็นโหนดเดียวกัน ต้องมีขั้นตอน clean/snap ก่อนวิเคราะห์
-- เครือข่ายถนนที่โหลดแบบ live มีโอกาสช้า ล้มเหลว หรือได้ข้อมูลไม่ครบจาก timeout/rate limit ของ upstream service
-- หากโหลด road network ไม่สำเร็จ ผล service area ควรแสดงสถานะข้อจำกัดให้ผู้ใช้ทราบ แทนการสื่อว่าเป็นพื้นที่เข้าถึงจริงจากถนน
+---
+
+## ฟีเจอร์ของระบบ (Features)
+
+1. **โหมดแผนที่เมือง 15 นาที (15-Min City Dashboard)**
+   - แสดงชั้นข้อมูลความเข้าถึงพื้นที่บริการ 5 ด้านหลัก (โรงพยาบาล กทม., โรงพยาบาลรัฐอื่น ๆ, ศบส., โรงเรียน, ขนส่งสาธารณะ) พร้อมสัญลักษณ์ที่สื่อถึงชั้นข้อมูลแบบ Web Map
+   - แสดงเส้นทางวิ่งของรถประจำทาง (Bus Routes)
+   - จัดอันดับเขตการปกครอง (District Leaderboard) ตามความครอบคลุม พร้อมฟิลเตอร์ค้นหาและซูมแผนที่รายเขต
+2. **โหมดวิเคราะห์เข้าถึงรายจุด (Dynamic Routing Analysis)**
+   - ปักหมุดจำลองตำแหน่งบนแผนที่ด้วยการคลิกเมาส์
+   - ปรับระยะทางค้นหาได้ตามต้องการ (300 ม. ถึง 5,000 ม.)
+   - ประมวลผลหาพื้นที่และขอบเขตเข้าถึงจริงตามระบบเครือข่ายถนนกรุงเทพฯ ผ่าน pgRouting ความละเอียดสูงภายในเวลาเสี้ยววินาที
+   - แสดงสถิติเชิงปริมาณ (ขนาดพื้นที่ ตร.กม., ความยาวถนนรวมที่เข้าถึง กม., จำนวนทางร่วมแยก) และแสดงรายชื่อเขตทั้งหมดที่ขอบเขตบริการนี้คาบเกี่ยวพาดผ่าน
+   - **ส่งออกข้อมูล (Export GeoJSON)**: ดาวน์โหลดผลลัพธ์ขอบเขตพื้นที่บริการไปเปิดในโปรแกรม GIS อื่น ๆ ได้ทันที

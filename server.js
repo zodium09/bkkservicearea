@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const turf = require('@turf/turf');
+const db = require('./lib/db');
 
 const app = express();
 const PORT = process.env.PORT || 5174;
@@ -339,13 +340,26 @@ app.get('/api/layers/:id/query', async (req, res) => {
   }
 });
 
-app.get('/api/qgis/status', async (req, res) => {
+app.get('/api/etl/qgis-status', async (req, res) => {
   const status = await findQgisProcess();
   res.json({
     ...status,
     note: status.found
       ? 'qgis_process is available for automation.'
       : 'qgis_process was not found. Install QGIS or set QGIS_PROCESS to enable native QGIS processing.',
+  });
+});
+
+app.get('/api/engine/status', async (req, res) => {
+  const health = await db.checkHealth();
+  const qgis = await findQgisProcess();
+  res.json({
+    runtimeEngine: 'postgis-pgrouting',
+    database: health.connected,
+    postgis: health.connected && health.postgis ? true : false,
+    pgrouting: health.connected && health.pgrouting ? true : false,
+    qgisProcess: qgis.found ? 'available' : 'optional',
+    error: health.error || null
   });
 });
 
@@ -641,95 +655,259 @@ app.post('/api/analyze', async (req, res) => {
     return res.status(400).json({ error: 'Add at least one service point before analysis.' });
   }
 
-  const pointFeatures = turf.featureCollection(
-    facilities.map((facility) =>
-      turf.point([facility.lng, facility.lat], {
-        id: facility.id,
-        name: facility.name,
-        type: facility.type,
-      }),
-    ),
-  );
-
-  const roads = await loadRoadsForFacilities(facilities, distanceMeters);
-  const graph = buildRoadGraph(roads);
-  if (!graph.nodes.size) {
-    return res.status(422).json({ error: 'No road network was found near the selected service points.' });
+  // 1. Check database connectivity
+  const health = await db.checkHealth();
+  if (!health.connected || !health.postgis || !health.pgrouting) {
+    return res.status(503).json({
+      error: 'Database is not ready for pgRouting analysis. Please make sure PostGIS and pgRouting are enabled.',
+      detail: health.error || 'Missing extensions'
+    });
   }
 
-  const snappedFacilities = facilities
-    .map((facility) => ({ ...facility, snap: nearestRoadNode(graph, facility) }))
-    .filter((facility) => facility.snap);
-  const sourceKeys = snappedFacilities.map((facility) => facility.snap.nodeKey);
-  const distances = dijkstra(graph, sourceKeys, distanceMeters);
-  const network = buildNetworkServiceArea(graph, distances, distanceMeters);
-  const serviceArea = network.serviceArea;
-  const areaSqKm = turf.area(serviceArea) / 1_000_000;
-
-  let intersectingDistricts = [];
   try {
-    const districts = await loadDistricts();
-    if (districts?.features?.length) {
-      intersectingDistricts = districts.features
-        .filter((district) => {
-          try {
-            return turf.booleanIntersects(serviceArea, district);
-          } catch {
-            return false;
-          }
-        })
-        .map((district) => ({
-          id: district.id,
-          name:
-            district.properties?.DNAME ||
-            district.properties?.DISTRICT_N ||
-            district.properties?.NAME ||
-            district.properties?.name ||
-            'ไม่ทราบชื่อเขต',
-          properties: district.properties,
-        }));
-    }
-  } catch {
-    intersectingDistricts = [];
-  }
+    // 2. Resolve nearest vertices in the database for each facility
+    const snappedFacilities = [];
+    for (const facility of facilities) {
+      const vertexRes = await db.query(`
+        SELECT id, ST_X(ST_Transform(the_geom, 4326)) as snap_lng, ST_Y(ST_Transform(the_geom, 4326)) as snap_lat,
+               ST_Distance(the_geom, ST_Transform(ST_SetSRID(ST_Point($1, $2), 4326), 32647)) as dist
+        FROM roads_vertices_pgr
+        ORDER BY the_geom <-> ST_Transform(ST_SetSRID(ST_Point($1, $2), 4326), 32647)
+        LIMIT 1
+      `, [facility.lng, facility.lat]);
 
-  const qgis = await findQgisProcess();
-  res.json({
-    engine: qgis.found ? 'js-network-analysis-qgis-available' : 'js-network-analysis',
-    analysisType: 'road-network',
-    qgis,
-    metrics: {
-      facilities: facilities.length,
-      distanceMeters,
-      travelMinutes,
-      speedKmh,
-      serviceAreaSqKm: Number(areaSqKm.toFixed(3)),
-      reachedRoadLengthKm: Number(network.reachedRoadLengthKm.toFixed(3)),
-      roadFeaturesLoaded: roads.features.length,
-      networkNodesReached: distances.size,
-      averageSnapDistanceMeters: Number(
-        (
-          snappedFacilities.reduce((sum, facility) => sum + facility.snap.distanceMeters, 0) /
-          Math.max(snappedFacilities.length, 1)
-        ).toFixed(2),
+      if (vertexRes.rows.length > 0) {
+        const row = vertexRes.rows[0];
+        // If nearest node is more than 1.5km away, treat it as out of bounds / invalid
+        if (row.dist <= 1500) {
+          snappedFacilities.push({
+            ...facility,
+            snap: {
+              nodeKey: row.id,
+              coord: [Number(row.snap_lng), Number(row.snap_lat)],
+              distanceMeters: Number(row.dist)
+            }
+          });
+        }
+      }
+    }
+
+    if (snappedFacilities.length === 0) {
+      return res.status(422).json({ error: 'Selected service points are too far from the road network (limit 1.5 km).' });
+    }
+
+    const startNodeIds = snappedFacilities.map(f => f.snap.nodeKey);
+    const bufferMeters = Number(process.env.SERVICE_AREA_BUFFER_M) || 50;
+
+    // 3. Query reachable road network segments (LineStrings)
+    const roadsQuery = `
+      SELECT 
+        r.id,
+        r.road_name,
+        r.road_type,
+        d.agg_cost,
+        ST_AsGeoJSON(ST_Transform(r.geom, 4326))::json AS geom
+      FROM roads r
+      JOIN (
+        SELECT * FROM pgr_drivingDistance(
+          'SELECT id, source, target, cost, reverse_cost FROM roads',
+          $1::integer[],
+          $2::double precision,
+          directed := false
+        )
+      ) d ON r.source = d.node OR r.target = d.node
+    `;
+    const roadsRes = await db.query(roadsQuery, [startNodeIds, distanceMeters]);
+
+    // 4. Query reached network nodes (Points)
+    const nodesQuery = `
+      SELECT 
+        v.id,
+        d.agg_cost,
+        ST_AsGeoJSON(ST_Transform(v.the_geom, 4326))::json AS geom
+      FROM roads_vertices_pgr v
+      JOIN (
+        SELECT * FROM pgr_drivingDistance(
+          'SELECT id, source, target, cost, reverse_cost FROM roads',
+          $1::integer[],
+          $2::double precision,
+          directed := false
+        )
+      ) d ON v.id = d.node
+    `;
+    const nodesRes = await db.query(nodesQuery, [startNodeIds, distanceMeters]);
+
+    // 5. Query merged service area polygon (MultiPolygon)
+    const polygonQuery = `
+      WITH reachable AS (
+        SELECT * FROM pgr_drivingDistance(
+          'SELECT id, source, target, cost, reverse_cost FROM roads',
+          $1::integer[],
+          $2::double precision,
+          directed := false
+        )
       ),
-      intersectingDistricts: intersectingDistricts.length,
-    },
-    facilities: pointFeatures,
-    snappedFacilities: turf.featureCollection(
-      snappedFacilities.map((facility) =>
-        turf.point(facility.snap.coord, {
+      reachable_edges AS (
+        SELECT r.geom
+        FROM roads r
+        JOIN reachable d ON r.source = d.node OR r.target = d.node
+      ),
+      merged AS (
+        SELECT ST_UnaryUnion(ST_Buffer(geom, $3::double precision)) AS geom
+        FROM reachable_edges
+      )
+      SELECT 
+        ST_AsGeoJSON(ST_Transform(ST_Multi(geom), 4326))::json AS geom_geojson,
+        ST_Area(geom) / 1000000.0 AS area_sq_km
+      FROM merged
+    `;
+    const polyRes = await db.query(polygonQuery, [startNodeIds, distanceMeters, bufferMeters]);
+    const polyRow = polyRes.rows[0];
+
+    const polyGeometry = polyRow?.geom_geojson;
+    const areaSqKm = Number(polyRow?.area_sq_km || 0);
+
+    const serviceAreaFeature = polyGeometry ? {
+      type: 'Feature',
+      geometry: polyGeometry,
+      properties: {
+        method: 'pgrouting-buffer',
+        bufferMeters,
+        areaSqKm: Number(areaSqKm.toFixed(3))
+      }
+    } : null;
+
+    const serviceArea = {
+      type: 'FeatureCollection',
+      features: serviceAreaFeature ? [serviceAreaFeature] : [],
+      properties: {
+        areaSqKm: Number(areaSqKm.toFixed(3))
+      }
+    };
+
+    const reachableRoads = {
+      type: 'FeatureCollection',
+      features: roadsRes.rows.map(row => ({
+        type: 'Feature',
+        geometry: row.geom,
+        properties: {
+          id: row.id,
+          road_name: row.road_name,
+          road_type: row.road_type,
+          agg_cost: Number(row.agg_cost.toFixed(2))
+        }
+      }))
+    };
+
+    const networkNodes = {
+      type: 'FeatureCollection',
+      features: nodesRes.rows.map(row => ({
+        type: 'Feature',
+        geometry: row.geom,
+        properties: {
+          id: row.id,
+          agg_cost: Number(row.agg_cost.toFixed(2))
+        }
+      }))
+    };
+
+    // 6. Calculate intersecting districts (using in-memory WGS84 boundary intersection)
+    let intersectingDistricts = [];
+    if (polyGeometry) {
+      try {
+        const districts = await loadDistricts();
+        if (districts?.features?.length) {
+          intersectingDistricts = districts.features
+            .filter((district) => {
+              try {
+                return turf.booleanIntersects(serviceAreaFeature, district);
+              } catch {
+                return false;
+              }
+            })
+            .map((district) => ({
+              id: district.id,
+              name: district.properties?.DNAME || district.properties?.DISTRICT_N || district.properties?.NAME || district.properties?.name || 'ไม่ทราบชื่อเขต',
+              properties: district.properties,
+            }));
+        }
+      } catch (e) {
+        console.error('District intersection calculation failed:', e.message);
+      }
+    }
+
+    const pointFeatures = turf.featureCollection(
+      facilities.map((facility) =>
+        turf.point([facility.lng, facility.lat], {
           id: facility.id,
           name: facility.name,
-          snapDistanceMeters: Number(facility.snap.distanceMeters.toFixed(2)),
+          type: facility.type,
         }),
       ),
-    ),
-    networkNodes: network.networkNodes,
-    reachableRoads: network.reachableRoads,
-    serviceArea,
-    intersectingDistricts,
-  });
+    );
+
+    const qgis = await findQgisProcess();
+    const responseJson = {
+      engine: 'postgis-pgrouting',
+      analysisType: 'road-network',
+      qgis,
+      metrics: {
+        facilities: facilities.length,
+        distanceMeters,
+        travelMinutes,
+        speedKmh,
+        serviceAreaSqKm: Number(areaSqKm.toFixed(3)),
+        reachedRoadLengthKm: Number((roadsRes.rows.reduce((sum, row) => sum + (row.agg_cost || 0), 0) / 1000).toFixed(3)),
+        roadFeaturesLoaded: roadsRes.rows.length,
+        networkNodesReached: nodesRes.rows.length,
+        averageSnapDistanceMeters: Number(
+          (
+            snappedFacilities.reduce((sum, facility) => sum + facility.snap.distanceMeters, 0) /
+            Math.max(snappedFacilities.length, 1)
+          ).toFixed(2),
+        ),
+        intersectingDistricts: intersectingDistricts.length,
+      },
+      facilities: pointFeatures,
+      snappedFacilities: turf.featureCollection(
+        snappedFacilities.map((facility) =>
+          turf.point(facility.snap.coord, {
+            id: facility.id,
+            name: facility.name,
+            snapDistanceMeters: Number(facility.snap.distanceMeters.toFixed(2)),
+          }),
+        ),
+      ),
+      networkNodes,
+      reachableRoads,
+      serviceArea,
+      intersectingDistricts,
+    };
+
+    // Log the analysis query and spatial geometries to database for history
+    const requestId = `req-${Date.now()}`;
+    if (polyGeometry) {
+      try {
+        await db.query(`
+          INSERT INTO service_area_results (request_id, distance_m, engine, geom, result_geojson)
+          VALUES ($1, $2, $3, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($4), 4326), 32647), $5)
+        `, [
+          requestId,
+          distanceMeters,
+          'postgis-pgrouting',
+          JSON.stringify(polyGeometry),
+          JSON.stringify(responseJson)
+        ]);
+      } catch (dbErr) {
+        console.error('Failed to log service area history:', dbErr.message);
+      }
+    }
+
+    res.json(responseJson);
+
+  } catch (error) {
+    res.status(500).json({ error: 'pgRouting network analysis failed', detail: error.message });
+  }
 });
 
 app.use(express.static(path.join(__dirname, 'dist')));

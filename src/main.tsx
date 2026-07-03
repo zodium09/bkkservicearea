@@ -11,6 +11,10 @@ import {
   RefreshCw,
   Search,
   Sun,
+  MapPin,
+  Sliders,
+  Download,
+  Database,
 } from 'lucide-react';
 import './styles.css';
 import {
@@ -88,6 +92,12 @@ function App() {
   const [message, setMessage] = useState<string>('เมือง 15 นาที: เลือกชั้นข้อมูลและโหมดเพื่อวิเคราะห์การเข้าถึง');
   const [currentZoom, setCurrentZoom] = useState<number>(11);
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analyze'>('dashboard');
+
+  // Engine status
+  const [engineStatus, setEngineStatus] = useState<any>(null);
+
   // 15-Minute City Dashboard State
   const [dashboardLayers, setDashboardLayers] = useState<Record<string, boolean>>({
     bkk_hospitals: true,
@@ -108,6 +118,13 @@ function App() {
   const [busRoutesGeojson, setBusRoutesGeojson] = useState<any>(null);
   const [showBusRoutes, setShowBusRoutes] = useState<boolean>(true);
 
+  // Dynamic analysis states
+  const [inspectCoords, setInspectCoords] = useState<L.LatLng | null>(null);
+  const [analyzeDistance, setAnalyzeDistance] = useState<number>(1000);
+  const [analyzeResults, setAnalyzeResults] = useState<any>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
   // Leaflet Layer References
   const layersRef = useRef<{
     basemap: L.TileLayer | null;
@@ -115,12 +132,18 @@ function App() {
     accessibility: Record<string, L.GeoJSON>;
     pois: Record<string, L.GeoJSON>;
     busRoutes: L.GeoJSON | null;
+    dynamicMarker: L.Marker | null;
+    dynamicServiceArea: L.GeoJSON | null;
+    dynamicReachableRoads: L.GeoJSON | null;
   }>({
     basemap: null,
     districts: null,
     accessibility: {},
     pois: {},
     busRoutes: null,
+    dynamicMarker: null,
+    dynamicServiceArea: null,
+    dynamicReachableRoads: null,
   });
 
   // Fetch initial data directly from static assets
@@ -142,7 +165,18 @@ function App() {
       .then((r) => r.json())
       .then(setBusRoutesGeojson)
       .catch((e) => console.error('Failed to load bus routes:', e));
+
+    // Fetch engine health status
+    fetch('/api/engine/status')
+      .then((r) => r.json())
+      .then(setEngineStatus)
+      .catch((e) => console.error('Failed to load engine status:', e));
   }, []);
+
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
 
   // Load accessibility layer GeoJSON on demand from static assets
   const loadAccessibilityLayer = async (category: string, type: string) => {
@@ -200,6 +234,12 @@ function App() {
     // Sync zoom level changes
     map.on('zoomend', () => {
       setCurrentZoom(map.getZoom());
+    });
+
+    map.on('click', (e: L.LeafletMouseEvent) => {
+      if (activeTabRef.current === 'analyze') {
+        setInspectCoords(e.latlng);
+      }
     });
 
     mapRef.current = map;
@@ -423,6 +463,143 @@ function App() {
     showBusRoutes,
   ]);
 
+  // Clean up dynamic analysis when switching tabs
+  useEffect(() => {
+    if (activeTab === 'dashboard') {
+      setInspectCoords(null);
+      setAnalyzeResults(null);
+      setAnalyzeError(null);
+      
+      const map = mapRef.current;
+      if (map) {
+        layersRef.current.dynamicMarker?.remove();
+        layersRef.current.dynamicMarker = null;
+        layersRef.current.dynamicServiceArea?.remove();
+        layersRef.current.dynamicServiceArea = null;
+        layersRef.current.dynamicReachableRoads?.remove();
+        layersRef.current.dynamicReachableRoads = null;
+      }
+    }
+  }, [activeTab]);
+
+  // Render Inspect Marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    layersRef.current.dynamicMarker?.remove();
+    layersRef.current.dynamicMarker = null;
+
+    if (inspectCoords) {
+      layersRef.current.dynamicMarker = L.marker(inspectCoords, {
+        icon: L.divIcon({
+          html: `
+            <div class="poi-marker-container inspect-marker">
+              <div class="poi-marker-icon" style="background-color: #ef4444; border: 2px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.5); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+                <span class="poi-marker-emoji" style="font-size: 16px;">📍</span>
+              </div>
+            </div>
+          `,
+          className: 'custom-poi-icon',
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        })
+      }).addTo(map);
+      map.panTo(inspectCoords);
+    }
+  }, [inspectCoords]);
+
+  // Render Dynamic Analysis results
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    layersRef.current.dynamicServiceArea?.remove();
+    layersRef.current.dynamicServiceArea = null;
+    layersRef.current.dynamicReachableRoads?.remove();
+    layersRef.current.dynamicReachableRoads = null;
+
+    if (activeTab === 'analyze' && analyzeResults) {
+      if (analyzeResults.serviceArea && analyzeResults.serviceArea.features?.length) {
+        layersRef.current.dynamicServiceArea = L.geoJSON(analyzeResults.serviceArea, {
+          pane: 'analysisArea',
+          style: {
+            color: '#7c3aed',
+            weight: 2.5,
+            opacity: 0.9,
+            fillColor: '#a78bfa',
+            fillOpacity: 0.25,
+          }
+        }).addTo(map);
+      }
+
+      if (analyzeResults.reachableRoads && analyzeResults.reachableRoads.features?.length) {
+        layersRef.current.dynamicReachableRoads = L.geoJSON(analyzeResults.reachableRoads, {
+          pane: 'analysisArea',
+          style: {
+            color: '#3b82f6',
+            weight: 3,
+            opacity: 0.8,
+            dashArray: '4, 6'
+          }
+        }).addTo(map);
+      }
+    }
+  }, [analyzeResults, activeTab]);
+
+  const handleAnalyze = async () => {
+    if (!inspectCoords) return;
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+    setAnalyzeResults(null);
+
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          facilities: [
+            {
+              lat: inspectCoords.lat,
+              lng: inspectCoords.lng,
+              name: 'จุดวิเคราะห์หลัก',
+              type: 'inspect'
+            }
+          ],
+          distanceMeters: analyzeDistance
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP error ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAnalyzeResults(data);
+      setMessage(`วิเคราะห์ระยะทาง ${analyzeDistance} ม. สำเร็จ (Engine: ${data.engine})`);
+    } catch (e: any) {
+      console.error('Analysis failed:', e);
+      setAnalyzeError(e.message || 'การวิเคราะห์ล้มเหลว');
+      setMessage('การวิเคราะห์เครือข่ายถนนล้มเหลว');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleExportGeoJSON = () => {
+    if (!analyzeResults || !analyzeResults.serviceArea) return;
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(analyzeResults.serviceArea));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `service-area-${analyzeDistance}m.geojson`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  };
+
   // Dashboard calculations for Sidebar
   const selectedCategoryStats = useMemo(() => {
     if (!dashboardStats) return null;
@@ -492,7 +669,9 @@ function App() {
             {basemapMode === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
         </div>
-        <div className="map-mode-badge">📊 โหมดเมือง 15 นาที (15-Min City)</div>
+        <div className="map-mode-badge">
+          {activeTab === 'dashboard' ? '📊 โหมดเมือง 15 นาที (15-Min City)' : '📍 โหมดวิเคราะห์เข้าถึงรายจุด (pgRouting)'}
+        </div>
       </section>
 
       {/* CONTROL SIDEBAR */}
@@ -508,184 +687,397 @@ function App() {
           </div>
         </div>
 
-        {/* TRAVEL MODE & ACCESSIBILITY LAYERS CONTROL */}
-        <section className="workflow-card">
-          <div className="section-header">
-            <h2>1. โหมดและเวลาเดินทาง</h2>
-          </div>
-          <div className="travel-mode-selector">
-            <button className={dashboardTravelMode === 'walk' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('walk')}>
-              <Footprints size={18} />
-              <span>เดิน (15 นาที)</span>
-            </button>
-            <button className={dashboardTravelMode === 'cycle' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('cycle')}>
-              <Bike size={18} />
-              <span>จักรยาน (15 นาที)</span>
-            </button>
-          </div>
+        {/* TAB SWITCHER */}
+        <div className="tab-switcher" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <button 
+            className={`tab-btn ${activeTab === 'dashboard' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.82rem',
+              backgroundColor: activeTab === 'dashboard' ? '#0f766e' : basemapMode === 'dark' ? '#1e293b' : '#e2e8f0',
+              color: activeTab === 'dashboard' ? 'white' : basemapMode === 'dark' ? '#94a3b8' : '#64748b',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            🗺️ แผนที่ 15 นาที
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'analyze' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('analyze')}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '8px',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.82rem',
+              backgroundColor: activeTab === 'analyze' ? '#0f766e' : basemapMode === 'dark' ? '#1e293b' : '#e2e8f0',
+              color: activeTab === 'analyze' ? 'white' : basemapMode === 'dark' ? '#94a3b8' : '#64748b',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            📍 วิเคราะห์รายจุด
+          </button>
+        </div>
 
-          <div className="section-header" style={{ marginTop: '18px' }}>
-            <h2>2. ชั้นข้อมูลความสะดวก (เลือกเพื่อแสดงบนแผนที่)</h2>
-          </div>
-          <div className="accessibility-layers-list">
-            {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
-              const isVisible = dashboardLayers[key];
-              const isActive = activeLeaderboardCategory === key;
-              const isLayerLoading =
-                loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
+        {activeTab === 'dashboard' ? (
+          <>
+            {/* TRAVEL MODE & ACCESSIBILITY LAYERS CONTROL */}
+            <section className="workflow-card">
+              <div className="section-header">
+                <h2>1. โหมดและเวลาเดินทาง</h2>
+              </div>
+              <div className="travel-mode-selector">
+                <button className={dashboardTravelMode === 'walk' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('walk')}>
+                  <Footprints size={18} />
+                  <span>เดิน (15 นาที)</span>
+                </button>
+                <button className={dashboardTravelMode === 'cycle' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('cycle')}>
+                  <Bike size={18} />
+                  <span>จักรยาน (15 นาที)</span>
+                </button>
+              </div>
 
-              return (
-                <div
-                  key={key}
-                  className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
-                  onClick={() => setActiveLeaderboardCategory(key)}
-                  title="คลิกเพื่อเลือกดูตารางการจัดอันดับเขตด้านล่าง"
-                >
-                  <label className="acc-layer-label" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={isVisible}
-                      onChange={(e) => {
-                        setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
-                      }}
-                    />
-                    <span className="layer-dot" style={{ backgroundColor: config.primary }} />
-                    <span className="layer-emoji">{config.emoji}</span>
-                    <span className="layer-title">{config.name}</span>
-                  </label>
+              <div className="section-header" style={{ marginTop: '18px' }}>
+                <h2>2. ชั้นข้อมูลความสะดวก (เลือกเพื่อแสดงบนแผนที่)</h2>
+              </div>
+              <div className="accessibility-layers-list">
+                {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
+                  const isVisible = dashboardLayers[key];
+                  const isActive = activeLeaderboardCategory === key;
+                  const isLayerLoading =
+                    loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
 
-                  {isLayerLoading ? (
-                    <Loader2 className="spin" size={14} style={{ color: '#64748b' }} />
-                  ) : (
-                    <div className="active-indicator-tag" style={{ opacity: isActive ? 1 : 0 }}>
-                      Active Rank
-                    </div>
-                  )}
-
-                  {key === 'public_transit' && isVisible && (
-                    <div style={{ marginLeft: '26px', marginTop: '6px', fontSize: '0.78rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  return (
+                    <div
+                      key={key}
+                      className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
+                      onClick={() => setActiveLeaderboardCategory(key)}
+                      title="คลิกเพื่อเลือกดูตารางการจัดอันดับเขตด้านล่าง"
+                    >
+                      <label className="acc-layer-label" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          checked={showBusRoutes}
-                          onChange={(e) => setShowBusRoutes(e.target.checked)}
+                          checked={isVisible}
+                          onChange={(e) => {
+                            setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
+                          }}
                         />
-                        <span>🚏 แสดงเส้นทางรถเมล์ (Bus Routes)</span>
+                        <span className="layer-dot" style={{ backgroundColor: config.primary }} />
+                        <span className="layer-emoji">{config.emoji}</span>
+                        <span className="layer-title">{config.name}</span>
                       </label>
+
+                      {isLayerLoading ? (
+                        <Loader2 className="spin" size={14} style={{ color: '#64748b' }} />
+                      ) : (
+                        <div className="active-indicator-tag" style={{ opacity: isActive ? 1 : 0 }}>
+                          Active Rank
+                        </div>
+                      )}
+
+                      {key === 'public_transit' && isVisible && (
+                        <div style={{ marginLeft: '26px', marginTop: '6px', fontSize: '0.78rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={showBusRoutes}
+                              onChange={(e) => setShowBusRoutes(e.target.checked)}
+                            />
+                            <span>🚏 แสดงเส้นทางรถเมล์ (Bus Routes)</span>
+                          </label>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* SUMMARY OF ALL ASPECTS */}
-        <section className="workflow-card all-aspects-summary-card">
-          <div className="section-header">
-            <h2>📊 สรุปความครอบคลุมรายด้าน (ทั้งกรุงเทพฯ)</h2>
-          </div>
-          <div className="aspects-summary-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-            {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
-              const score = dashboardStats?.overall[key]?.[dashboardTravelMode] ?? 0;
-              return (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '8px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '16px' }}>{config.emoji}</span>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: basemapMode === 'dark' ? '#f8fafc' : '#0f172a' }}>{config.name}</span>
-                  </div>
-                  <strong style={{ fontSize: '0.9rem', color: config.primary }}>{score}%</strong>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* OVERALL METRIC COVERAGE */}
-        {selectedCategoryStats && (
-          <section className="result-card coverage-summary-card">
-            <div className="result-head">
-              <div>
-                <span>อัตราความครอบคลุมของกรุงเทพฯ</span>
-                <h2>
-                  {selectedCategoryStats.emoji} {selectedCategoryStats.name}
-                </h2>
+                  );
+                })}
               </div>
-              <strong
+            </section>
+
+            {/* SUMMARY OF ALL ASPECTS */}
+            <section className="workflow-card all-aspects-summary-card">
+              <div className="section-header">
+                <h2>📊 สรุปความครอบคลุมรายด้าน (ทั้งกรุงเทพฯ)</h2>
+              </div>
+              <div className="aspects-summary-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
+                  const score = dashboardStats?.overall[key]?.[dashboardTravelMode] ?? 0;
+                  return (
+                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '8px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '16px' }}>{config.emoji}</span>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: basemapMode === 'dark' ? '#f8fafc' : '#0f172a' }}>{config.name}</span>
+                      </div>
+                      <strong style={{ fontSize: '0.9rem', color: config.primary }}>{score}%</strong>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* OVERALL METRIC COVERAGE */}
+            {selectedCategoryStats && (
+              <section className="result-card coverage-summary-card">
+                <div className="result-head">
+                  <div>
+                    <span>อัตราความครอบคลุมของกรุงเทพฯ</span>
+                    <h2>
+                      {selectedCategoryStats.emoji} {selectedCategoryStats.name}
+                    </h2>
+                  </div>
+                  <strong
+                    style={{
+                      backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].light + '33',
+                      color: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].fill,
+                    }}
+                  >
+                    {selectedCategoryStats.overall}%
+                  </strong>
+                </div>
+
+                <div className="coverage-progress-bar-bg">
+                  <div
+                    className="coverage-progress-bar-fill"
+                    style={{
+                      width: `${selectedCategoryStats.overall}%`,
+                      backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].primary,
+                    }}
+                  />
+                </div>
+                <p className="coverage-description-text">
+                  ประชากรในพื้นที่ระบายสีสามารถเดินทางด้วย{' '}
+                  <strong>{dashboardTravelMode === 'walk' ? 'เท้า' : 'จักรยาน'}</strong>{' '}
+                  ไปถึง{selectedCategoryStats.name}ที่ใกล้ที่สุดได้ภายใน 15 นาที
+                </p>
+              </section>
+            )}
+
+            {/* DISTRICT LEADERBOARD */}
+            <section className="workflow-card district-ranking-card">
+              <div className="district-ranking-header">
+                <h2>จัดอันดับความครอบคลุมตามเขตการปกครอง</h2>
+                <span>{sortedDistrictRankings.length} เขต</span>
+              </div>
+
+              <div className="search-box-container">
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="ค้นหาเขตในกรุงเทพฯ..."
+                  value={districtSearch}
+                  onChange={(e) => setDistrictSearch(e.target.value)}
+                />
+                {districtSearch && (
+                  <button className="clear-search-btn" onClick={() => setDistrictSearch('')}>
+                    ×
+                  </button>
+                )}
+              </div>
+
+              <div className="district-leaderboard-list">
+                {sortedDistrictRankings.map((district, index) => {
+                  const isSelected = selectedDistrictCode === district.code;
+                  return (
+                    <div
+                      key={district.code}
+                      className={`leaderboard-item ${isSelected ? 'is-selected' : ''}`}
+                      onClick={() => handleDistrictLeaderboardClick(district.code)}
+                    >
+                      <span className="rank-num">#{index + 1}</span>
+                      <span className="district-name">เขต{district.name}</span>
+                      <span className={`score-badge ${getDistrictScoreBadgeClass(district.score)}`}>{district.score}%</span>
+                    </div>
+                  );
+                })}
+                {sortedDistrictRankings.length === 0 && <p className="empty-search-text">ไม่พบเขตที่ค้นหา</p>}
+              </div>
+              {selectedDistrictCode && (
+                <button className="reset-district-selection-btn" onClick={() => setSelectedDistrictCode(null)}>
+                  ล้างการเลือกเขต
+                </button>
+              )}
+            </section>
+          </>
+        ) : (
+          /* DYNAMIC ANALYSIS PANEL */
+          <>
+            <section className="workflow-card">
+              <div className="section-header">
+                <h2>🛰️ สถานะระบบประมวลผล (Engine)</h2>
+              </div>
+              {engineStatus?.database ? (
+                <div style={{ padding: '10px 12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, marginTop: '8px' }}>
+                  <Database size={16} />
+                  <span>Engine: PostGIS + pgRouting พร้อมใช้งาน</span>
+                </div>
+              ) : (
+                <div style={{ padding: '10px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, marginTop: '8px' }}>
+                  <Database size={16} />
+                  <span>ระบบวิเคราะห์เครือข่ายถนนยังไม่พร้อม กรุณาตรวจสอบ PostGIS/pgRouting</span>
+                </div>
+              )}
+
+              <div className="section-header" style={{ marginTop: '18px' }}>
+                <h2>1. เลือกจุดบริการบนแผนที่</h2>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', padding: '12px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)', borderRadius: '8px' }}>
+                <MapPin size={20} style={{ color: inspectCoords ? '#ef4444' : '#64748b' }} />
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>ตำแหน่งปักหมุด</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: basemapMode === 'dark' ? '#f8fafc' : '#0f172a' }}>
+                    {inspectCoords ? `${inspectCoords.lat.toFixed(6)}, ${inspectCoords.lng.toFixed(6)}` : 'คลิกบนแผนที่เพื่อปักหมุด 📍'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="section-header" style={{ marginTop: '18px' }}>
+                <h2>2. ตั้งค่าระยะทางบนเครือข่ายถนน</h2>
+              </div>
+              <div style={{ marginTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
+                  <span>ระยะวิเคราะห์</span>
+                  <span style={{ color: '#0f766e' }}>{analyzeDistance.toLocaleString()} เมตร</span>
+                </div>
+                <input
+                  type="range"
+                  min="300"
+                  max="5000"
+                  step="100"
+                  value={analyzeDistance}
+                  onChange={(e) => setAnalyzeDistance(Number(e.target.value))}
+                  style={{ width: '100%', cursor: 'pointer', accentColor: '#0f766e' }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#64748b', marginTop: '2px' }}>
+                  <span>300 ม.</span>
+                  <span>5,000 ม. (5 กม.)</span>
+                </div>
+              </div>
+
+              <button
+                onClick={handleAnalyze}
+                disabled={isAnalyzing || !inspectCoords || !engineStatus?.database}
                 style={{
-                  backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].light + '33',
-                  color: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].fill,
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: isAnalyzing || !inspectCoords || !engineStatus?.database ? '#64748b' : '#0f766e',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: isAnalyzing || !inspectCoords || !engineStatus?.database ? 'not-allowed' : 'pointer',
+                  marginTop: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 6px rgba(15,118,110,0.2)',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                {selectedCategoryStats.overall}%
-              </strong>
-            </div>
-
-            {/* Visual Progress Bar */}
-            <div className="coverage-progress-bar-bg">
-              <div
-                className="coverage-progress-bar-fill"
-                style={{
-                  width: `${selectedCategoryStats.overall}%`,
-                  backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].primary,
-                }}
-              />
-            </div>
-            <p className="coverage-description-text">
-              ประชากรในพื้นที่ระบายสีสามารถเดินทางด้วย{' '}
-              <strong>{dashboardTravelMode === 'walk' ? 'เท้า' : 'จักรยาน'}</strong>{' '}
-              ไปถึง{selectedCategoryStats.name}ที่ใกล้ที่สุดได้ภายใน 15 นาที
-            </p>
-          </section>
-        )}
-
-        {/* DISTRICT LEADERBOARD */}
-        <section className="workflow-card district-ranking-card">
-          <div className="district-ranking-header">
-            <h2>จัดอันดับความครอบคลุมตามเขตการปกครอง</h2>
-            <span>{sortedDistrictRankings.length} เขต</span>
-          </div>
-
-          {/* District Search */}
-          <div className="search-box-container">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              placeholder="ค้นหาเขตในกรุงเทพฯ..."
-              value={districtSearch}
-              onChange={(e) => setDistrictSearch(e.target.value)}
-            />
-            {districtSearch && (
-              <button className="clear-search-btn" onClick={() => setDistrictSearch('')}>
-                ×
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="spin" size={18} />
+                    <span>กำลังประมวลผล pgRouting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sliders size={18} />
+                    <span>วิเคราะห์พื้นที่บริการ (Analyze)</span>
+                  </>
+                )}
               </button>
-            )}
-          </div>
 
-          {/* Leaderboard List */}
-          <div className="district-leaderboard-list">
-            {sortedDistrictRankings.map((district, index) => {
-              const isSelected = selectedDistrictCode === district.code;
-              return (
-                <div
-                  key={district.code}
-                  className={`leaderboard-item ${isSelected ? 'is-selected' : ''}`}
-                  onClick={() => handleDistrictLeaderboardClick(district.code)}
-                >
-                  <span className="rank-num">#{index + 1}</span>
-                  <span className="district-name">เขต{district.name}</span>
-                  <span className={`score-badge ${getDistrictScoreBadgeClass(district.score)}`}>{district.score}%</span>
+              {analyzeError && (
+                <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#ef4444', fontSize: '0.78rem' }}>
+                  <strong>เกิดข้อผิดพลาด:</strong> {analyzeError}
                 </div>
-              );
-            })}
-            {sortedDistrictRankings.length === 0 && <p className="empty-search-text">ไม่พบเขตที่ค้นหา</p>}
-          </div>
-          {selectedDistrictCode && (
-            <button className="reset-district-selection-btn" onClick={() => setSelectedDistrictCode(null)}>
-              ล้างการเลือกเขต
-            </button>
-          )}
-        </section>
+              )}
+            </section>
+
+            {/* RESULTS */}
+            {analyzeResults && (
+              <section className="result-card">
+                <div className="result-head" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ผลลัพธ์การวิเคราะห์พื้นที่เข้าถึง</span>
+                    <h2 style={{ fontSize: '1rem', fontWeight: 700, marginTop: '2px' }}>📍 ขอบเขตระยะ {analyzeDistance} เมตร</h2>
+                  </div>
+                  <strong style={{ background: '#7c3aed22', color: '#a78bfa', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>
+                    {analyzeResults.engine === 'postgis-pgrouting' ? 'pgRouting' : 'JS Fallback'}
+                  </strong>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>ขนาดพื้นที่บริการ</span>
+                    <strong style={{ fontSize: '1.05rem', color: '#a78bfa' }}>{analyzeResults.metrics.serviceAreaSqKm} ตร.กม.</strong>
+                  </div>
+                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.02)' }}>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>ความยาวถนนที่เข้าถึง</span>
+                    <strong style={{ fontSize: '1.05rem', color: '#3b82f6' }}>{analyzeResults.metrics.reachedRoadLengthKm} กม.</strong>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>จำนวนทางร่วมแยก</span>
+                    <strong style={{ fontSize: '1.05rem', color: '#10b981' }}>{analyzeResults.metrics.networkNodesReached} จุด</strong>
+                  </div>
+                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>ระยะ Snap ถนน</span>
+                    <strong style={{ fontSize: '1.05rem', color: '#f59e0b' }}>{analyzeResults.metrics.averageSnapDistanceMeters} ม.</strong>
+                  </div>
+                </div>
+
+                <div className="section-header">
+                  <h2>🗺️ เขตที่พื้นที่พาดผ่าน ({analyzeResults.intersectingDistricts.length})</h2>
+                </div>
+                <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px', paddingRight: '4px' }}>
+                  {analyzeResults.intersectingDistricts.map((d: any) => (
+                    <div key={d.id} style={{ fontSize: '0.78rem', padding: '6px 10px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '4px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
+                      เขต{d.name}
+                    </div>
+                  ))}
+                  {analyzeResults.intersectingDistricts.length === 0 && (
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ไม่พาดผ่านเขตใด</span>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleExportGeoJSON}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: basemapMode === 'dark' ? '1px solid #7c3aed' : '1px solid #c084fc',
+                    backgroundColor: 'transparent',
+                    color: basemapMode === 'dark' ? '#c084fc' : '#7c3aed',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    marginTop: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Download size={14} />
+                  <span>📥 Export GeoJSON (ขอบเขตบริการ)</span>
+                </button>
+              </section>
+            )}
+          </>
+        )}
 
         <p className="message">{message}</p>
       </aside>

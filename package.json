@@ -10,6 +10,8 @@
     "prepare:data": "node scripts/prepare-bma-layers.js",
     "build": "vite build",
     "test": "node --test",
+    "test:api": "node test/analyze.test.js",
+    "db:topology": "node scripts/build-topology.js",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "start": "node server.js"
   },
@@ -24,6 +26,7 @@
     "express": "^5.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.23.0",
+    "pg": "^8.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "vite": "^8.1.3"
