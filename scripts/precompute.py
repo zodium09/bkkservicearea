@@ -75,6 +75,16 @@ def haversine_distance(coord1, coord2):
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return 6371000 * c
 
+def classify_school(name):
+    if any(w in name for w in ["กรุงเทพมหานคร", "(กทม.)", "สังกัด กทม.", "สังกัดกทม."]):
+        return "รร.สังกัด กทม."
+    elif any(w in name for w in ["นานาชาติ", "international", "เซนต์", "คริสเตียน", "เอกชน", "อนุบาล", "สาธิต", "คาทอลิก", "มอนเตส", "วิทยาลัย"]):
+        return "รร.เอกชน"
+    else:
+        if "วัด" in name:
+            return "รร.สังกัด กทม."
+        return "รร.สังกัด สพฐ. (รัฐบาล)"
+
 def main():
     print("=== STARTING ACCESSIBILITY PRECOMPUTATION IN PYTHON ===")
     start_time = time.time()
@@ -202,9 +212,41 @@ def main():
         seen_names = set()
 
         for f in pois.get("features", []):
-            name = f.get("properties", {}).get("NAME", "")
-            if cat_key == "transit":
-                base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].strip()
+            name = f.get("properties", {}).get("NAME", "").strip()
+            if not name:
+                continue
+
+            # Filter out police boxes, security cabins, and animal structures
+            if any(w in name for w in ["ป้อมยาม", "ป้อมตำรวจ", "ตู้ยาม", "ตู้ตำรวจ", "ป้อมทหาร", "รักษาความปลอดภัย", "รปภ.", "สัตว์", "สัตว์เลี้ยง"]):
+                continue
+
+            # Category-specific filtering and deduplication
+            if cat_key in ["bkk_hospitals", "gov_hospitals"]:
+                base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].split(" ตึก ")[0].split(" อาคาร ")[0].strip()
+                if base_name in seen_names:
+                    continue
+                seen_names.add(base_name)
+
+            elif cat_key == "public_transit":
+                if "สถานี" in name or "BTS" in name or "MRT" in name:
+                    base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].split(" Gate ")[0].strip()
+                    if base_name in seen_names:
+                        continue
+                    seen_names.add(base_name)
+                elif "ท่าเรือ" in name or "ท่าเทียบเรือ" in name:
+                    # Filter: passenger, express, ferry, major river/canal piers
+                    is_valid_pier = any(w in name for w in ["โดยสาร", "ด่วน", "ข้ามฟาก", "คลองแสนแสบ", "คลองผดุง", "ท่าเรือข้ามฟาก", "เจ้าพระยา"]) or (
+                        ("ท่าเรือ" in name or "ท่าเทียบเรือ" in name) and not any(w in name for w in ["ส่วนบุคคล", "ร้าง", "สินค้า", "บริษัท", "เอกชน", "ห้างหุ้นส่วน"])
+                    )
+                    if not is_valid_pier:
+                        continue
+                    base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].strip()
+                    if base_name in seen_names:
+                        continue
+                    seen_names.add(base_name)
+
+            elif cat_key == "schools":
+                base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].split(" (")[0].strip()
                 if base_name in seen_names:
                     continue
                 seen_names.add(base_name)
@@ -221,18 +263,25 @@ def main():
             dist = haversine_distance((coords[0], coords[1]), node_coord)
             if dist < 750:
                 source_nodes.append(nearest_node)
+                
+                properties = {
+                    "id": f.get("properties", {}).get("OBJECTID") or len(snapped_features),
+                    "name": name,
+                    "district": f.get("properties", {}).get("DISTRICT") or "",
+                    "snapDistanceMeters": round(dist, 2)
+                }
+                
+                # Classify school type for the frontend
+                if cat_key == "schools":
+                    properties["school_type"] = classify_school(name)
+                    
                 snapped_features.append({
                     "type": "Feature",
                     "geometry": {
                         "type": "Point",
                         "coordinates": list(node_coord)
                     },
-                    "properties": {
-                        "id": f.get("properties", {}).get("OBJECTID") or len(snapped_features),
-                        "name": name,
-                        "district": f.get("properties", {}).get("DISTRICT") or "",
-                        "snapDistanceMeters": round(dist, 2)
-                    }
+                    "properties": properties
                 })
 
         with open(os.path.join(OUTPUT_DIR, f"{cat_key}-pois.geojson"), 'w', encoding='utf-8') as f:

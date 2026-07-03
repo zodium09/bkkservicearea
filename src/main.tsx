@@ -459,7 +459,13 @@ function App() {
             return L.marker(latlng, { icon });
           },
           onEachFeature: (feature, layer: L.Layer) => {
-            layer.bindTooltip(`<strong>${escapeHtml(feature.properties.name)}</strong><br>เขต${escapeHtml(feature.properties.district || 'ไม่ระบุ')}`, {
+            let tooltipContent = `<strong>${escapeHtml(feature.properties.name)}</strong>`;
+            if (feature.properties.school_type) {
+              tooltipContent += `<br><span style="display:inline-block; margin-top:4px; padding:2px 6px; font-size:0.72rem; font-weight:bold; background-color:#e0f2fe; color:#0369a1; border-radius:4px; border:1px solid #bae6fd;">${escapeHtml(feature.properties.school_type)}</span>`;
+            }
+            tooltipContent += `<br>เขต${escapeHtml(feature.properties.district || 'ไม่ระบุ')}`;
+
+            layer.bindTooltip(tooltipContent, {
               direction: 'top',
             });
           },
