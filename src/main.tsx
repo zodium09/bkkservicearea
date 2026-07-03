@@ -34,32 +34,39 @@ const BASEMAPS = {
 };
 
 const ACCESSIBILITY_PALETTE: Record<string, AccessibilityConfig> = {
-  health: {
-    primary: '#0d9488',
-    light: '#2dd4bf',
-    fill: '#0f766e',
-    name: 'โรงพยาบาลและสาธารณสุข',
+  bkk_hospitals: {
+    primary: '#059669', // Emerald
+    light: '#34d399',
+    fill: '#047857',
+    name: 'โรงพยาบาลสังกัด กทม.',
     emoji: '🏥',
   },
-  education: {
-    primary: '#ea580c',
+  gov_hospitals: {
+    primary: '#2563eb', // Blue
+    light: '#60a5fa',
+    fill: '#1d4ed8',
+    name: 'โรงพยาบาลรัฐอื่นๆ',
+    emoji: '🏥',
+  },
+  health_centers: {
+    primary: '#0d9488', // Teal
+    light: '#2dd4bf',
+    fill: '#0f766e',
+    name: 'ศูนย์บริการสาธารณสุข (ศบส.)',
+    emoji: '🩺',
+  },
+  schools: {
+    primary: '#ea580c', // Orange
     light: '#f97316',
     fill: '#c2410c',
     name: 'โรงเรียนและสถานศึกษา',
     emoji: '🏫',
   },
-  parks: {
-    primary: '#059669',
-    light: '#10b981',
-    fill: '#047857',
-    name: 'สวนสาธารณะและพื้นที่สีเขียว',
-    emoji: '🌳',
-  },
-  transit: {
-    primary: '#7c3aed',
+  public_transit: {
+    primary: '#7c3aed', // Purple
     light: '#a78bfa',
     fill: '#6d28d9',
-    name: 'สถานีขนส่งสาธารณะ',
+    name: 'ระบบขนส่งสาธารณะ',
     emoji: '🚆',
   },
 };
@@ -79,16 +86,18 @@ function App() {
   // Theme states
   const [basemapMode, setBasemapMode] = useState<'light' | 'dark'>('dark');
   const [message, setMessage] = useState<string>('เมือง 15 นาที: เลือกชั้นข้อมูลและโหมดเพื่อวิเคราะห์การเข้าถึง');
+  const [currentZoom, setCurrentZoom] = useState<number>(11);
 
   // 15-Minute City Dashboard State
   const [dashboardLayers, setDashboardLayers] = useState<Record<string, boolean>>({
-    health: true,
-    education: false,
-    parks: false,
-    transit: false,
+    bkk_hospitals: true,
+    gov_hospitals: false,
+    health_centers: false,
+    schools: false,
+    public_transit: false,
   });
   const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle'>('walk');
-  const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState<string>('health');
+  const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState<string>('bkk_hospitals');
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [districtsGeojson, setDistrictsGeojson] = useState<any>(null);
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | number | null>(null);
@@ -96,17 +105,22 @@ function App() {
   const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
   const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
 
+  const [busRoutesGeojson, setBusRoutesGeojson] = useState<any>(null);
+  const [showBusRoutes, setShowBusRoutes] = useState<boolean>(true);
+
   // Leaflet Layer References
   const layersRef = useRef<{
     basemap: L.TileLayer | null;
     districts: L.GeoJSON | null;
     accessibility: Record<string, L.GeoJSON>;
     pois: Record<string, L.GeoJSON>;
+    busRoutes: L.GeoJSON | null;
   }>({
     basemap: null,
     districts: null,
     accessibility: {},
     pois: {},
+    busRoutes: null,
   });
 
   // Fetch initial data directly from static assets
@@ -122,6 +136,12 @@ function App() {
       .then((r) => r.json())
       .then(setDistrictsGeojson)
       .catch((e) => console.error('Failed to load districts boundary:', e));
+
+    // Fetch bus routes overlay
+    fetch('/data/processed/accessibility/bus-routes.geojson')
+      .then((r) => r.json())
+      .then(setBusRoutesGeojson)
+      .catch((e) => console.error('Failed to load bus routes:', e));
   }, []);
 
   // Load accessibility layer GeoJSON on demand from static assets
@@ -177,6 +197,11 @@ function App() {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Sync zoom level changes
+    map.on('zoomend', () => {
+      setCurrentZoom(map.getZoom());
+    });
+
     mapRef.current = map;
   }, []);
 
@@ -202,6 +227,8 @@ function App() {
     // --- 1. Clean Up Old Layers ---
     layersRef.current.districts?.remove();
     layersRef.current.districts = null;
+    layersRef.current.busRoutes?.remove();
+    layersRef.current.busRoutes = null;
 
     Object.keys(layersRef.current.accessibility).forEach((key) => {
       layersRef.current.accessibility[key]?.remove();
@@ -281,6 +308,27 @@ function App() {
       }
     }
 
+    // Render Bus Routes Overlay
+    if (dashboardLayers.public_transit && showBusRoutes && busRoutesGeojson) {
+      layersRef.current.busRoutes = L.geoJSON(busRoutesGeojson, {
+        pane: 'analysisArea',
+        style: (feature) => {
+          return {
+            color: feature?.properties?.color || '#7c3aed',
+            weight: 3.5,
+            opacity: 0.75,
+            dashArray: '5, 8', // dashed style for bus routes
+          };
+        },
+        onEachFeature: (feature, layer: L.Layer) => {
+          layer.bindTooltip(`<strong>${escapeHtml(feature.properties.ref)}</strong><br>${escapeHtml(feature.properties.name)} (${escapeHtml(feature.properties.type)})`, {
+            sticky: true,
+            className: 'district-tooltip'
+          });
+        }
+      }).addTo(map);
+    }
+
     // Draw Accessibility Polygons and POIs
     Object.entries(dashboardLayers).forEach(([category, visible]) => {
       if (!visible) return;
@@ -309,18 +357,54 @@ function App() {
       if (poisData) {
         layersRef.current.pois[poisKey] = L.geoJSON(poisData, {
           pane: 'servicePoints',
-          pointToLayer: (_, latlng) => {
-            return L.circleMarker(latlng, {
-              radius: 4.5,
-              weight: 1,
-              color: '#ffffff',
-              opacity: 0.95,
-              fillColor: config.primary,
-              fillOpacity: 0.95,
+          pointToLayer: (feature, latlng) => {
+            const name = feature.properties.name || 'จุดบริการ';
+            let shortName = name;
+            let emoji = config.emoji;
+            let color = config.primary;
+
+            if (category === 'schools') {
+              shortName = name.replace('โรงเรียน', 'รร.');
+            } else if (category === 'health_centers') {
+              shortName = name.replace('ศูนย์บริการสาธารณสุข', 'ศบส.');
+            } else if (category === 'bkk_hospitals' || category === 'gov_hospitals') {
+              shortName = name.replace('โรงพยาบาล', 'รพ.');
+            } else if (category === 'public_transit') {
+              if (name.includes('สถานีรถไฟฟ้า') || name.includes('BTS') || name.includes('MRT')) {
+                shortName = name.replace('สถานีรถไฟฟ้าเอ็มอาร์ที', 'MRT ').replace('สถานีรถไฟฟ้าบีทีเอส', 'BTS ');
+                emoji = '🚆';
+                color = '#3b82f6'; // Blue for train
+              } else if (name.includes('ท่าเรือ')) {
+                shortName = name.replace('ท่าเรือโดยสาร', 'ท่า').replace('ท่าเรือ', 'ท่า');
+                emoji = '🚢';
+                color = '#0ea5e9'; // Cyan for boat
+              } else {
+                shortName = name.replace('ป้ายรถประจำทาง', 'ป้าย').replace('ป้ายรถเมล์', 'ป้าย');
+                emoji = '🚌';
+                color = '#8b5cf6'; // Violet for bus
+              }
+            }
+
+            const iconHtml = `
+              <div class="poi-marker-container category-${category}">
+                <div class="poi-marker-icon" style="background-color: ${color};">
+                  <span class="poi-marker-emoji">${emoji}</span>
+                </div>
+                <span class="poi-map-label">${escapeHtml(shortName)}</span>
+              </div>
+            `;
+
+            const icon = L.divIcon({
+              html: iconHtml,
+              className: 'custom-poi-icon',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12],
             });
+
+            return L.marker(latlng, { icon });
           },
           onEachFeature: (feature, layer: L.Layer) => {
-            layer.bindTooltip(`<strong>${escapeHtml(feature.properties.name)}</strong><br>เขต${escapeHtml(feature.properties.district)}`, {
+            layer.bindTooltip(`<strong>${escapeHtml(feature.properties.name)}</strong><br>เขต${escapeHtml(feature.properties.district || 'ไม่ระบุ')}`, {
               direction: 'top',
             });
           },
@@ -335,6 +419,8 @@ function App() {
     activeLeaderboardCategory,
     selectedDistrictCode,
     basemapMode,
+    busRoutesGeojson,
+    showBusRoutes,
   ]);
 
   // Dashboard calculations for Sidebar
@@ -386,7 +472,7 @@ function App() {
     <main className={`app-shell ${basemapMode === 'dark' ? 'is-dark-map' : 'is-light-map'}`}>
       {/* MAP STAGE */}
       <section className="map-stage">
-        <div id="map" aria-label="Bangkok 15-Minute City Map" />
+        <div id="map" className={`zoom-${currentZoom}`} aria-label="Bangkok 15-Minute City Map" />
 
         {/* Map float toolbar */}
         <div className="map-toolbar" aria-label="Map tools">
@@ -475,6 +561,40 @@ function App() {
                       Active Rank
                     </div>
                   )}
+
+                  {key === 'public_transit' && isVisible && (
+                    <div style={{ marginLeft: '26px', marginTop: '6px', fontSize: '0.78rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={showBusRoutes}
+                          onChange={(e) => setShowBusRoutes(e.target.checked)}
+                        />
+                        <span>🚏 แสดงเส้นทางรถเมล์ (Bus Routes)</span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* SUMMARY OF ALL ASPECTS */}
+        <section className="workflow-card all-aspects-summary-card">
+          <div className="section-header">
+            <h2>📊 สรุปความครอบคลุมรายด้าน (ทั้งกรุงเทพฯ)</h2>
+          </div>
+          <div className="aspects-summary-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+            {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
+              const score = dashboardStats?.overall[key]?.[dashboardTravelMode] ?? 0;
+              return (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '8px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '16px' }}>{config.emoji}</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: basemapMode === 'dark' ? '#f8fafc' : '#0f172a' }}>{config.name}</span>
+                  </div>
+                  <strong style={{ fontSize: '0.9rem', color: config.primary }}>{score}%</strong>
                 </div>
               );
             })}

@@ -266,7 +266,7 @@ app.get('/api/accessibility/stats', (req, res) => {
 app.get('/api/accessibility/layer/:category/:type', (req, res) => {
   const { category, type } = req.params;
   
-  if (!['health', 'education', 'parks', 'transit'].includes(category)) {
+  if (!['bkk_hospitals', 'gov_hospitals', 'health_centers', 'schools', 'public_transit'].includes(category)) {
     return res.status(400).json({ error: 'Invalid category' });
   }
   if (!['pois', 'area-walk', 'area-cycle'].includes(type)) {

@@ -3,6 +3,11 @@ import json
 import math
 import time
 from typing import Dict, Any, List
+
+# Set PROJ directories for QGIS Python environment to ensure coordinate projections succeed
+os.environ['PROJ_DATA'] = r"C:\Program Files\QGIS 4.0.2\share\proj"
+os.environ['PROJ_LIB'] = r"C:\Program Files\QGIS 4.0.2\share\proj"
+
 import geopandas as gpd
 from shapely.geometry import Point, LineString, MultiLineString, shape, mapping
 from shapely.ops import unary_union, linemerge
@@ -19,25 +24,30 @@ OUTPUT_DIR = os.path.join(BASE_DIR, 'data', 'processed', 'accessibility')
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 CATEGORIES = {
-    "health": {
-        "name": "โรงพยาบาลและสาธารณสุข",
-        "where": "(NAME LIKE '%โรงพยาบาล%' OR NAME LIKE '%ศูนย์บริการสาธารณสุข%' OR NAME LIKE '%รพ.%') AND NOT (NAME LIKE '%สัตว์%' OR NAME LIKE '%ฟัน%' OR NAME LIKE '%ทันต%')",
-        "filter": lambda name: ("โรงพยาบาล" in name or "ศูนย์บริการสาธารณสุข" in name or "รพ." in name) and not any(w in name for w in ["สัตว์", "ฟัน", "ทันต"])
+    "bkk_hospitals": {
+        "name": "โรงพยาบาลสังกัด กทม.",
+        "where": "(NAME LIKE '%โรงพยาบาลกลาง%' OR NAME LIKE '%โรงพยาบาลตากสิน%' OR NAME LIKE '%โรงพยาบาลเจริญกรุงประชารักษ์%' OR NAME LIKE '%โรงพยาบาลหลวงพ่อทวีศักดิ์%' OR NAME LIKE '%โรงพยาบาลเวชการุณย์รัศมิ์%' OR NAME LIKE '%โรงพยาบาลลาดกระบัง%' OR NAME LIKE '%โรงพยาบาลราชพิพัฒน์%' OR NAME LIKE '%โรงพยาบาลสิรินธร%' OR NAME LIKE '%โรงพยาบาลผู้สูงอายุบางขุนเทียน%' OR NAME LIKE '%โรงพยาบาลคลองสามวา%' OR NAME LIKE '%โรงพยาบาลบางนากรุงเทพมหานคร%' OR NAME LIKE '%โรงพยาบาลวชิรพยาบาล%') AND NOT (NAME LIKE '%สัตว์%' OR NAME LIKE '%สัตว์เลี้ยง%')",
+        "filter": lambda name: any(w in name for w in ["โรงพยาบาลกลาง", "โรงพยาบาลตากสิน", "โรงพยาบาลเจริญกรุงประชารักษ์", "โรงพยาบาลหลวงพ่อทวีศักดิ์", "โรงพยาบาลเวชการุณย์รัศมิ์", "โรงพยาบาลลาดกระบัง", "โรงพยาบาลราชพิพัฒน์", "โรงพยาบาลสิรินธร", "โรงพยาบาลผู้สูงอายุบางขุนเทียน", "โรงพยาบาลคลองสามวา", "โรงพยาบาลบางนากรุงเทพมหานคร", "โรงพยาบาลวชิรพยาบาล"]) and not any(w in name for w in ["สัตว์", "สัตว์เลี้ยง"])
     },
-    "education": {
+    "gov_hospitals": {
+        "name": "โรงพยาบาลรัฐอื่นๆ",
+        "where": "(NAME LIKE '%โรงพยาบาลศิริราช%' OR NAME LIKE '%โรงพยาบาลจุฬาลงกรณ์%' OR NAME LIKE '%โรงพยาบาลรามาธิบดี%' OR NAME LIKE '%โรงพยาบาลราชวิถี%' OR NAME LIKE '%โรงพยาบาลพระมงกุฎเกล้า%' OR NAME LIKE '%โรงพยาบาลตำรวจ%' OR NAME LIKE '%โรงพยาบาลเลิดสิน%' OR NAME LIKE '%โรงพยาบาลนพรัตนราชธานี%' OR NAME LIKE '%โรงพยาบาลภูมิพลอดุลยเดช%' OR NAME LIKE '%โรงพยาบาลสมเด็จพระปิ่นเกล้า%' OR NAME LIKE '%โรงพยาบาลสงฆ์%' OR NAME LIKE '%โรงพยาบาลทหารผ่านศึก%' OR NAME LIKE '%สถาบันสุขภาพเด็ก%' OR NAME LIKE '%โรงพยาบาลพระมงกุฏเกล้า%' OR NAME LIKE '%โรงพยาบาลสมเด็จพระปิ่นเกล้า%') AND NOT (NAME LIKE '%สัตว์%' OR NAME LIKE '%สัตว์เลี้ยง%')",
+        "filter": lambda name: any(w in name for w in ["โรงพยาบาลศิริราช", "โรงพยาบาลจุฬาลงกรณ์", "โรงพยาบาลรามาธิบดี", "โรงพยาบาลราชวิถี", "โรงพยาบาลพระมงกุฎเกล้า", "โรงพยาบาลตำรวจ", "โรงพยาบาลเลิดสิน", "โรงพยาบาลนพรัตนราชธานี", "โรงพยาบาลภูมิพลอดุลยเดช", "โรงพยาบาลสมเด็จพระปิ่นเกล้า", "โรงพยาบาลสงฆ์", "โรงพยาบาลทหารผ่านศึก", "สถาบันสุขภาพเด็ก", "โรงพยาบาลพระมงกุฏเกล้า", "โรงพยาบาลสมเด็จพระปิ่นเกล้า"]) and not any(w in name for w in ["สัตว์", "สัตว์เลี้ยง"])
+    },
+    "health_centers": {
+        "name": "ศูนย์บริการสาธารณสุข (ศบส.)",
+        "where": "NAME LIKE '%ศูนย์บริการสาธารณสุข%'",
+        "filter": lambda name: "ศูนย์บริการสาธารณสุข" in name
+    },
+    "schools": {
         "name": "โรงเรียนและสถานศึกษา",
-        "where": "(NAME LIKE '%โรงเรียน%' OR NAME LIKE '%วิทยาลัย%' OR NAME LIKE '%มหาวิทยาลัย%') AND NOT (NAME LIKE '%สอนขับ%' OR NAME LIKE '%มวย%' OR NAME LIKE '%กวดวิชา%' OR NAME LIKE '%สอนภาษา%')",
-        "filter": lambda name: any(w in name for w in ["โรงเรียน", "วิทยาลัย", "มหาวิทยาลัย"]) and not any(w in name for w in ["สอนขับ", "มวย", "กวดวิชา", "สอนภาษา"])
+        "where": "(NAME LIKE '%โรงเรียน%') AND NOT (NAME LIKE '%สอนขับ%' OR NAME LIKE '%มวย%' OR NAME LIKE '%กวดวิชา%' OR NAME LIKE '%สอนภาษา%' OR NAME LIKE '%เสริมสวย%')",
+        "filter": lambda name: "โรงเรียน" in name and not any(w in name for w in ["สอนขับ", "มวย", "กวดวิชา", "สอนภาษา", "เสริมสวย"])
     },
-    "parks": {
-        "name": "สวนสาธารณะและพื้นที่สีเขียว",
-        "where": "(NAME LIKE '%สวนสาธารณะ%' OR NAME LIKE '%สวนหย่อม%' OR NAME LIKE '%ลานกีฬา%' OR NAME LIKE '%สนามเด็กเล่น%') AND NOT (NAME LIKE '%อาหาร%' OR NAME LIKE '%หมูกระทะ%' OR NAME LIKE '%คาราโอเกะ%' OR NAME LIKE '%หมู่บ้าน%' OR NAME LIKE '%คอนโด%' OR NAME LIKE '%อพาร์ท%' OR NAME LIKE '%หอพัก%' OR NAME LIKE '%บ้านพัก%')",
-        "filter": lambda name: any(w in name for w in ["สวนสาธารณะ", "สวนหย่อม", "ลานกีฬา", "สนามเด็กเล่น"]) and not any(w in name for w in ["อาหาร", "หมูกระทะ", "คาราโอเกะ", "หมู่บ้าน", "คอนโด", "อพาร์ท", "หอพัก", "บ้านพัก"])
-    },
-    "transit": {
-        "name": "สถานีขนส่งสาธารณะ",
-        "where": "NAME LIKE '%สถานีรถไฟฟ้า%' OR NAME LIKE '%สถานีบีทีเอส%' OR NAME LIKE '%สถานี MRT%' OR NAME LIKE '%สถานี BTS%' OR NAME LIKE '%แอร์พอร์ตลิงก์%' OR NAME LIKE '%Airport Rail Link%'",
-        "filter": lambda name: any(w in name for w in ["สถานีรถไฟฟ้า", "สถานีบีทีเอส", "สถานี MRT", "สถานี BTS", "แอร์พอร์ตลิงก์", "Airport Rail Link"])
+    "public_transit": {
+        "name": "ระบบขนส่งสาธารณะ",
+        "where": "NAME LIKE '%สถานีรถไฟฟ้า%' OR NAME LIKE '%สถานี BTS%' OR NAME LIKE '%สถานี MRT%' OR NAME LIKE '%สถานีรถไฟลอยฟ้า%' OR NAME LIKE '%ท่าเรือ%' OR NAME LIKE '%ท่าเทียบเรือ%'",
+        "filter": lambda name: any(w in name for w in ["สถานีรถไฟฟ้า", "สถานี BTS", "สถานี MRT", "สถานีรถไฟลอยฟ้า", "ท่าเรือ", "ท่าเทียบเรือ"])
     }
 }
 
@@ -167,6 +177,22 @@ def main():
                     if cat_config["filter"](f.get("properties", {}).get("NAME", ""))
                 ]
             }
+
+        # For public transit, load bus stops from the pre-downloaded local GeoJSON file
+        if cat_key == "public_transit":
+            print("Loading bus stops from local GeoJSON...")
+            try:
+                local_bus_stops_path = os.path.join(BASE_DIR, 'data', 'processed', 'accessibility', 'osm-bus-stops.geojson')
+                if os.path.exists(local_bus_stops_path):
+                    with open(local_bus_stops_path, 'r', encoding='utf-8') as f_bus:
+                        bus_data = json.load(f_bus)
+                    bus_features = bus_data.get("features", [])
+                    print(f"Loaded local bus stops: {len(bus_features)}")
+                    pois["features"].extend(bus_features)
+                else:
+                    print("Local bus stops file not found!")
+            except Exception as e:
+                print(f"Failed to load local bus stops: {str(e)}")
 
         print(f"POIs resolved: {len(pois.get('features', []))}")
 

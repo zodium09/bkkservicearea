@@ -163,7 +163,7 @@ def get_accessibility_stats():
 
 @app.get("/api/accessibility/layer/{category}/{layer_type}")
 def get_accessibility_layer(category: str, layer_type: str):
-    if category not in ['health', 'education', 'parks', 'transit']:
+    if category not in ['bkk_hospitals', 'gov_hospitals', 'health_centers', 'schools', 'public_transit']:
         raise HTTPException(status_code=400, detail="Invalid category")
     if layer_type not in ['pois', 'area-walk', 'area-cycle']:
         raise HTTPException(status_code=400, detail="Invalid layer type")

@@ -2143,3 +2143,75 @@ h2 {
   color: #f8fafc !important;
 }
 
+/* Custom POI Icon and Label Styles */
+.custom-poi-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.poi-marker-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.poi-marker-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease-in-out;
+}
+
+.poi-marker-icon:hover {
+  transform: scale(1.25);
+  z-index: 1001;
+}
+
+.poi-marker-emoji {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.poi-map-label {
+  display: none; /* Hidden by default, shown by .zoom-XX parent */
+  position: absolute;
+  top: 24px;
+  background: rgba(15, 23, 42, 0.9); /* dark semi-transparent */
+  color: #f8fafc;
+  font-family: 'Sarabun', 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  border: 0.5px solid rgba(255, 255, 255, 0.15);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.is-light-map .poi-map-label {
+  background: rgba(255, 255, 255, 0.95);
+  color: #0f172a;
+  border: 0.5px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Show POI labels only at high zoom levels */
+#map.zoom-14 .poi-map-label,
+#map.zoom-15 .poi-map-label,
+#map.zoom-16 .poi-map-label,
+#map.zoom-17 .poi-map-label,
+#map.zoom-18 .poi-map-label,
+#map.zoom-19 .poi-map-label,
+#map.zoom-20 .poi-map-label {
+  display: block;
+}
+
+
