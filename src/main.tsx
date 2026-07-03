@@ -413,7 +413,7 @@ function App() {
             } else if (category === 'public_transit') {
               const isTrain = name.includes('สถานีรถไฟฟ้า') || name.includes('BTS') || name.includes('MRT');
               const isBoat = name.includes('ท่าเรือ') || name.includes('ท่าเทียบเรือ');
-              const isBus = name.includes('ป้ายรถประจำทาง') || name.includes('ป้ายรถเมล์') || name.includes('ป้าย');
+              const isBus = !isTrain && !isBoat;
 
               if (isTrain && !subTypeFilters.transit_train) return false;
               if (isBoat && !subTypeFilters.transit_boat) return false;
