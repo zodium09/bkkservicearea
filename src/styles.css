@@ -305,6 +305,24 @@ h2 {
   flex: 0 0 auto;
 }
 
+.compact-empty button {
+  margin-left: auto;
+  min-height: 32px;
+  border: 1px solid rgba(15, 118, 110, 0.24);
+  border-radius: 8px;
+  padding: 0 10px;
+  color: #0f766e;
+  background: #fff;
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.compact-empty button:hover {
+  color: #fff;
+  background: #0f766e;
+}
+
 .facility-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1027,7 +1045,8 @@ input[type="range"] {
 .is-dark-map .dimension-actions button,
 .is-dark-map .layer-toggle,
 .is-dark-map .action-row button,
-.is-dark-map .speed-control input {
+.is-dark-map .speed-control input,
+.is-dark-map .compact-empty button {
   border-color: rgba(148, 163, 184, 0.16);
   color: #dbe7ef;
   background: #101820;
@@ -1036,7 +1055,8 @@ input[type="range"] {
 .is-dark-map .preset-grid button:hover,
 .is-dark-map .preset-grid button.is-active,
 .is-dark-map .layer-actions button:hover,
-.is-dark-map .dimension-actions button:hover {
+.is-dark-map .dimension-actions button:hover,
+.is-dark-map .compact-empty button:hover {
   border-color: rgba(94, 234, 212, 0.45);
   color: #99f6e4;
   background: rgba(20, 184, 166, 0.16);
@@ -1520,7 +1540,8 @@ h2 {
 .is-light-map .action-row button,
 .is-light-map .layer-toggle,
 .is-light-map .speed-control input,
-.is-light-map .preset-grid button {
+.is-light-map .preset-grid button,
+.is-light-map .compact-empty button {
   border-color: rgba(15, 23, 42, 0.1);
   color: #334155;
   background: rgba(255, 255, 255, 0.88);
@@ -1556,5 +1577,15 @@ h2 {
     left: 12px;
     right: auto;
     top: 68px;
+  }
+
+  .compact-empty {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .compact-empty button {
+    width: 100%;
+    margin-left: 0;
   }
 }

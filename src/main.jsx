@@ -136,6 +136,16 @@ function downloadJson(filename, data) {
   URL.revokeObjectURL(url);
 }
 
+function createFacilityFromLatLng(latlng, index) {
+  return {
+    id: `svc-${Date.now()}-${index + 1}`,
+    name: `จุดบริการ ${index + 1}`,
+    type: 'custom',
+    lat: Number(latlng.lat.toFixed(6)),
+    lng: Number(latlng.lng.toFixed(6)),
+  };
+}
+
 function App() {
   const mapRef = useRef(null);
   const layersRef = useRef({});
@@ -209,13 +219,7 @@ function App() {
     map.on('click', (event) => {
       if (activeToolRef.current !== 'add') return;
       setFacilities((items) => {
-        const next = {
-          id: `svc-${Date.now()}`,
-          name: `จุดบริการ ${items.length + 1}`,
-          type: 'custom',
-          lat: Number(event.latlng.lat.toFixed(6)),
-          lng: Number(event.latlng.lng.toFixed(6)),
-        };
+        const next = createFacilityFromLatLng(event.latlng, items.length);
         setMessage(`เพิ่ม ${next.name} แล้ว`);
         setAnalysis(null);
         return [...items, next];
@@ -392,6 +396,11 @@ function App() {
   }, [analysis, basemapMode]);
 
   async function runAnalysis() {
+    if (!facilities.length) {
+      setMessage('เพิ่มจุดบริการก่อนวิเคราะห์: คลิกบนแผนที่ หรือใช้ปุ่มเพิ่มจุดกลางแผนที่');
+      return;
+    }
+
     setBusy(true);
     setMessage(`กำลังวิเคราะห์พื้นที่บริการใน ${travelMinutes} นาที...`);
     try {
@@ -415,6 +424,17 @@ function App() {
     setFacilities([]);
     setAnalysis(null);
     setMessage('ล้างข้อมูลแล้ว คลิกบนแผนที่เพื่อเริ่มใหม่');
+  }
+
+  function addFacilityAtMapCenter() {
+    const map = mapRef.current;
+    if (!map) return;
+    setFacilities((items) => {
+      const next = createFacilityFromLatLng(map.getCenter(), items.length);
+      setMessage(`เพิ่ม ${next.name} ที่กลางแผนที่แล้ว`);
+      setAnalysis(null);
+      return [...items, next];
+    });
   }
 
   function toggleBmaLayer(layerId) {
@@ -623,6 +643,9 @@ function App() {
           <div className="compact-empty" hidden={facilities.length > 0}>
             <MapPin size={18} />
             <span>คลิกบนแผนที่เพื่อเพิ่มจุดบริการ</span>
+            <button type="button" onClick={addFacilityAtMapCenter}>
+              เพิ่มจุดกลางแผนที่
+            </button>
           </div>
 
           {facilities.length > 0 && (
@@ -669,7 +692,7 @@ function App() {
             </div>
           </div>
 
-          <button className="primary-action" onClick={runAnalysis} disabled={busy || facilities.length === 0}>
+          <button className="primary-action" onClick={runAnalysis} disabled={busy}>
             {busy ? <Loader2 className="spin" size={18} /> : <Play size={18} />}
             วิเคราะห์เวลาเข้าถึง
           </button>
