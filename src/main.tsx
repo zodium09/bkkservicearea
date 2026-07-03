@@ -259,6 +259,8 @@ function App() {
     }).addTo(map);
   }, [basemapMode]);
 
+  const useCircleMarkers = useMemo(() => currentZoom < 14, [currentZoom]);
+
   // Sync/Redraw Map Layers
   useEffect(() => {
     const map = mapRef.current;
@@ -399,9 +401,22 @@ function App() {
           pane: 'servicePoints',
           pointToLayer: (feature, latlng) => {
             const name = feature.properties.name || 'จุดบริการ';
+            let color = config.primary;
+
+            // LOD Optimization: Use canvas CircleMarkers at lower zooms to prevent browser freezing
+            if (useCircleMarkers) {
+              return L.circleMarker(latlng, {
+                pane: 'servicePoints',
+                radius: 4.5,
+                fillColor: color,
+                color: '#ffffff',
+                weight: 1,
+                fillOpacity: 0.9,
+              });
+            }
+
             let shortName = name;
             let emoji = config.emoji;
-            let color = config.primary;
 
             if (category === 'schools') {
               shortName = name.replace('โรงเรียน', 'รร.');
@@ -461,6 +476,7 @@ function App() {
     basemapMode,
     busRoutesGeojson,
     showBusRoutes,
+    useCircleMarkers,
   ]);
 
   // Clean up dynamic analysis when switching tabs
