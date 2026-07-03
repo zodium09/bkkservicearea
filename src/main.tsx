@@ -407,9 +407,24 @@ function App() {
             const schoolType = feature?.properties?.school_type || '';
 
             if (category === 'schools') {
-              if (schoolType === 'รร.สังกัด กทม.' && !subTypeFilters.school_bma) return false;
-              if (schoolType === 'รร.สังกัด สพฐ. (รัฐบาล)' && !subTypeFilters.school_obec) return false;
-              if (schoolType === 'รร.เอกชน' && !subTypeFilters.school_private) return false;
+              let sType = schoolType;
+              if (!sType) {
+                if (name.includes('กรุงเทพมหานคร') || name.includes('(กทม.)') || name.includes('สังกัด กทม.') || name.includes('สังกัดกทม.')) {
+                  sType = 'รร.สังกัด กทม.';
+                } else if (name.includes('นานาชาติ') || name.toLowerCase().includes('international') || name.includes('เซนต์') || name.includes('คริสเตียน') || name.includes('เอกชน') || name.includes('อนุบาล') || name.includes('สาธิต') || name.includes('วิทยาลัย')) {
+                  sType = 'รร.เอกชน';
+                } else {
+                  if (name.includes('วัด')) {
+                    sType = 'รร.สังกัด กทม.';
+                  } else {
+                    sType = 'รร.สังกัด สพฐ. (รัฐบาล)';
+                  }
+                }
+              }
+
+              if (sType === 'รร.สังกัด กทม.' && !subTypeFilters.school_bma) return false;
+              if (sType === 'รร.สังกัด สพฐ. (รัฐบาล)' && !subTypeFilters.school_obec) return false;
+              if (sType === 'รร.เอกชน' && !subTypeFilters.school_private) return false;
             } else if (category === 'public_transit') {
               const isTrain = name.includes('สถานีรถไฟฟ้า') || name.includes('BTS') || name.includes('MRT');
               const isBoat = name.includes('ท่าเรือ') || name.includes('ท่าเทียบเรือ');
