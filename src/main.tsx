@@ -24,8 +24,17 @@ import {
   Trash2,
 } from 'lucide-react';
 import './styles.css';
+import {
+  BmaLayer,
+  BmaLayerCatalog,
+  Facility,
+  DashboardStats,
+  LayerLoadStatus,
+  AccessibilityConfig,
+  DistrictLeaderboardItem,
+} from './types';
 
-const BANGKOK_CENTER = [13.7563, 100.5018];
+const BANGKOK_CENTER: L.LatLngExpression = [13.7563, 100.5018];
 const BASEMAPS = {
   light: {
     name: 'OpenStreetMap Light',
@@ -39,7 +48,7 @@ const BASEMAPS = {
   },
 };
 
-const BMA_LAYER_PALETTE = {
+const BMA_LAYER_PALETTE: Record<number, string> = {
   0: '#ef4444',
   1: '#a16207',
   2: '#64748b',
@@ -57,7 +66,7 @@ const BMA_LAYER_PALETTE = {
   14: '#16a34a',
 };
 
-const ACCESSIBILITY_PALETTE = {
+const ACCESSIBILITY_PALETTE: Record<string, AccessibilityConfig> = {
   health: {
     primary: '#0d9488',
     light: '#2dd4bf',
@@ -88,7 +97,9 @@ const ACCESSIBILITY_PALETTE = {
   },
 };
 
-function escapeHtml(value) {
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+
+function escapeHtml(value: any): string {
   return String(value)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -97,7 +108,7 @@ function escapeHtml(value) {
     .replaceAll("'", '&#39;');
 }
 
-function downloadJson(filename, data) {
+function downloadJson(filename: string, data: any): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/geo+json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -107,64 +118,72 @@ function downloadJson(filename, data) {
   URL.revokeObjectURL(url);
 }
 
-function createFacilityFromLatLng(latlng, index) {
+function createFacilityFromLatLng(latlng: L.LatLng, index: number): Facility {
   return {
-    id: `svc-${Date.now()}-${index + 1}`,
+    id: index + 1,
     name: `จุดบริการ ${index + 1}`,
-    type: 'custom',
     lat: Number(latlng.lat.toFixed(6)),
     lng: Number(latlng.lng.toFixed(6)),
   };
 }
 
 function App() {
-  const mapRef = useRef(null);
-  const activeToolRef = useRef('add');
+  const mapRef = useRef<L.Map | null>(null);
+  const activeToolRef = useRef<string>('add');
 
   // Dual-mode toggle: 'dashboard' (Mode 1) or 'custom' (Mode 2)
-  const [uiMode, setUiMode] = useState('dashboard');
+  const [uiMode, setUiMode] = useState<'dashboard' | 'custom'>('dashboard');
 
   // Shared state
-  const [basemapMode, setBasemapMode] = useState('dark');
-  const [layerPanelOpen, setLayerPanelOpen] = useState(true);
-  const [qgis, setQgis] = useState(null);
-  const [basemapMeta, setBasemapMeta] = useState(null);
-  const [layerCatalog, setLayerCatalog] = useState(null);
-  const [visibleBmaLayers, setVisibleBmaLayers] = useState({});
-  const [layerLoadStatus, setLayerLoadStatus] = useState({});
-  const [message, setMessage] = useState('เมือง 15 นาที: เลือกชั้นข้อมูลและโหมดเพื่อวิเคราะห์การเข้าถึง');
+  const [basemapMode, setBasemapMode] = useState<'light' | 'dark'>('dark');
+  const [layerPanelOpen, setLayerPanelOpen] = useState<boolean>(true);
+  const [qgis, setQgis] = useState<{ found: boolean; command?: string | null; version?: string | null } | null>(null);
+  const [basemapMeta, setBasemapMeta] = useState<any>(null);
+  const [layerCatalog, setLayerCatalog] = useState<BmaLayerCatalog | null>(null);
+  const [visibleBmaLayers, setVisibleBmaLayers] = useState<Record<number, boolean>>({});
+  const [layerLoadStatus, setLayerLoadStatus] = useState<Record<number, LayerLoadStatus>>({});
+  const [message, setMessage] = useState<string>('เมือง 15 นาที: เลือกชั้นข้อมูลและโหมดเพื่อวิเคราะห์การเข้าถึง');
 
   // Mode 1: 15-Minute City Dashboard State
-  const [dashboardLayers, setDashboardLayers] = useState({
+  const [dashboardLayers, setDashboardLayers] = useState<Record<string, boolean>>({
     health: true,
     education: false,
     parks: false,
     transit: false,
   });
-  const [dashboardTravelMode, setDashboardTravelMode] = useState('walk'); // 'walk' or 'cycle'
-  const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState('health');
-  const [dashboardStats, setDashboardStats] = useState(null);
-  const [districtsGeojson, setDistrictsGeojson] = useState(null);
-  const [selectedDistrictCode, setSelectedDistrictCode] = useState(null);
-  const [districtSearch, setDistrictSearch] = useState('');
-  const [loadedAccessibilityData, setLoadedAccessibilityData] = useState({});
-  const [loadingLayers, setLoadingLayers] = useState({});
+  const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle'>('walk');
+  const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState<string>('health');
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+  const [districtsGeojson, setDistrictsGeojson] = useState<any>(null);
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | number | null>(null);
+  const [districtSearch, setDistrictSearch] = useState<string>('');
+  const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
+  const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
 
   // Mode 2: Custom Service Area State
-  const [facilities, setFacilities] = useState([]);
-  const [travelMinutes, setTravelMinutes] = useState(15);
-  const [speedKmh, setSpeedKmh] = useState(6);
-  const [analysis, setAnalysis] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const [activeTool, setActiveTool] = useState('add');
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [travelMinutes, setTravelMinutes] = useState<number>(15);
+  const [speedKmh, setSpeedKmh] = useState<number>(6);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [busy, setBusy] = useState<boolean>(false);
+  const [activeTool, setActiveTool] = useState<'add'>('add');
 
   // Leaflet Layer References
-  const layersRef = useRef({
+  const layersRef = useRef<{
+    basemap: L.TileLayer | null;
+    bma: Record<number, L.Layer>;
+    districts: L.GeoJSON | null;
+    accessibility: Record<string, L.GeoJSON>;
+    pois: Record<string, L.GeoJSON>;
+    customArea: L.GeoJSON | null;
+    customRoads: L.GeoJSON | null;
+    customPoints: L.LayerGroup | null;
+  }>({
     basemap: null,
     bma: {},
     districts: null,
-    accessibility: {}, // category-mode -> L.geoJSON
-    pois: {},         // category -> L.geoJSON
+    accessibility: {},
+    pois: {},
     customArea: null,
     customRoads: null,
     customPoints: null,
@@ -172,18 +191,27 @@ function App() {
 
   // Fetch initial data
   useEffect(() => {
-    fetch('/api/qgis/status').then((r) => r.json()).then(setQgis).catch(() => setQgis({ found: false }));
-    fetch('/api/basemap/metadata').then((r) => r.json()).then(setBasemapMeta).catch(() => null);
-    fetch('/api/processed-layers/catalog').then((r) => r.json()).then(setLayerCatalog).catch(() => null);
-    
+    fetch(`${API_BASE_URL}/api/qgis/status`)
+      .then((r) => r.json())
+      .then(setQgis)
+      .catch(() => setQgis({ found: false }));
+    fetch(`${API_BASE_URL}/api/basemap/metadata`)
+      .then((r) => r.json())
+      .then(setBasemapMeta)
+      .catch(() => null);
+    fetch(`${API_BASE_URL}/api/processed-layers/catalog`)
+      .then((r) => r.json())
+      .then(setLayerCatalog)
+      .catch(() => null);
+
     // Fetch precomputed stats
-    fetch('/api/accessibility/stats')
+    fetch(`${API_BASE_URL}/api/accessibility/stats`)
       .then((r) => r.json())
       .then(setDashboardStats)
       .catch((e) => console.error('Failed to load accessibility stats:', e));
-      
+
     // Fetch districts boundary
-    fetch('/api/districts')
+    fetch(`${API_BASE_URL}/api/districts`)
       .then((r) => r.json())
       .then(setDistrictsGeojson)
       .catch((e) => console.error('Failed to load districts boundary:', e));
@@ -195,24 +223,24 @@ function App() {
   }, [activeTool]);
 
   // Load accessibility layer GeoJSON on demand
-  const loadAccessibilityLayer = async (category, type) => {
+  const loadAccessibilityLayer = async (category: string, type: string) => {
     const key = `${category}-${type}`;
     if (loadedAccessibilityData[key]) return loadedAccessibilityData[key];
-    
-    setLoadingLayers(prev => ({ ...prev, [key]: true }));
+
+    setLoadingLayers((prev) => ({ ...prev, [key]: true }));
     try {
-      const response = await fetch(`/api/accessibility/layer/${category}/${type}`);
+      const response = await fetch(`${API_BASE_URL}/api/accessibility/layer/${category}/${type}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      setLoadedAccessibilityData(prev => ({
+      setLoadedAccessibilityData((prev) => ({
         ...prev,
-        [key]: data
+        [key]: data,
       }));
-      setLoadingLayers(prev => ({ ...prev, [key]: false }));
+      setLoadingLayers((prev) => ({ ...prev, [key]: false }));
       return data;
     } catch (e) {
       console.error(`Failed to load accessibility layer ${key}:`, e);
-      setLoadingLayers(prev => ({ ...prev, [key]: false }));
+      setLoadingLayers((prev) => ({ ...prev, [key]: false }));
       return null;
     }
   };
@@ -220,7 +248,7 @@ function App() {
   // Trigger loading when dashboard layers are toggled
   useEffect(() => {
     if (uiMode !== 'dashboard') return;
-    
+
     Object.entries(dashboardLayers).forEach(([category, visible]) => {
       if (visible) {
         loadAccessibilityLayer(category, `area-${dashboardTravelMode}`);
@@ -244,21 +272,21 @@ function App() {
     map.createPane('analysisArea');
     map.createPane('analysisRoads');
     map.createPane('servicePoints');
-    
-    map.getPane('bmaData').style.zIndex = 410;
-    map.getPane('districts').style.zIndex = 415;
-    map.getPane('analysisArea').style.zIndex = 430;
-    map.getPane('analysisRoads').style.zIndex = 440;
-    map.getPane('servicePoints').style.zIndex = 455;
+
+    map.getPane('bmaData')!.style.zIndex = '410';
+    map.getPane('districts')!.style.zIndex = '415';
+    map.getPane('analysisArea')!.style.zIndex = '430';
+    map.getPane('analysisRoads')!.style.zIndex = '440';
+    map.getPane('servicePoints')!.style.zIndex = '455';
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     // Map click handler for Custom Points mode
-    map.on('click', (event) => {
+    map.on('click', (event: L.LeafletMouseEvent) => {
       if (activeToolRef.current !== 'add') return;
-      
+
       // Get current UI Mode inside the event using class/id checks if state isn't synced
-      const isCustomMode = document.querySelector('.mode-tabs button.is-active')?.textContent.includes('วิเคราะห์จุดบริการ');
+      const isCustomMode = document.querySelector('.mode-tabs button.is-active')?.textContent?.includes('วิเคราะห์จุดบริการ');
       if (!isCustomMode) return;
 
       setFacilities((items) => {
@@ -295,11 +323,11 @@ function App() {
     layersRef.current.districts?.remove();
     layersRef.current.districts = null;
 
-    Object.keys(layersRef.current.accessibility).forEach(key => {
+    Object.keys(layersRef.current.accessibility).forEach((key) => {
       layersRef.current.accessibility[key]?.remove();
       delete layersRef.current.accessibility[key];
     });
-    Object.keys(layersRef.current.pois).forEach(key => {
+    Object.keys(layersRef.current.pois).forEach((key) => {
       layersRef.current.pois[key]?.remove();
       delete layersRef.current.pois[key];
     });
@@ -318,7 +346,7 @@ function App() {
         layersRef.current.districts = L.geoJSON(districtsGeojson, {
           pane: 'districts',
           style: (feature) => {
-            const code = feature.properties?.DCODE || feature.properties?.OBJECTID || feature.properties?.name;
+            const code = feature?.properties?.DCODE || feature?.properties?.OBJECTID || feature?.properties?.name;
             const isSelected = selectedDistrictCode === code;
             return {
               color: isSelected ? '#38bdf8' : basemapMode === 'dark' ? '#334155' : '#94a3b8',
@@ -328,10 +356,10 @@ function App() {
               fillOpacity: isSelected ? 0.15 : 0,
             };
           },
-          onEachFeature: (feature, layer) => {
+          onEachFeature: (feature, layer: L.Layer) => {
             const name = feature.properties?.DNAME || feature.properties?.DISTRICT_N || feature.properties?.NAME || 'เขต';
             const code = feature.properties?.DCODE || feature.properties?.OBJECTID || feature.properties?.name;
-            
+
             // Get coverage percentage for active leaderboard category
             let pctText = 'ไม่มีข้อมูล';
             if (dashboardStats && dashboardStats.districts[code]) {
@@ -343,41 +371,39 @@ function App() {
 
             layer.bindTooltip(`<strong>เขต${name}</strong><br>เข้าถึง ${ACCESSIBILITY_PALETTE[activeLeaderboardCategory].name}: ${pctText}`, {
               sticky: true,
-              className: 'district-tooltip'
+              className: 'district-tooltip',
             });
 
             layer.on({
-              mouseover: (e) => {
+              mouseover: (e: L.LeafletMouseEvent) => {
                 if (selectedDistrictCode !== code) {
-                  e.target.setStyle({
+                  (e.target as L.Path).setStyle({
                     color: '#67e8f9',
                     weight: 2,
                     fillColor: '#67e8f9',
-                    fillOpacity: 0.05
+                    fillOpacity: 0.05,
                   });
                 }
               },
-              mouseout: (e) => {
+              mouseout: (e: L.LeafletMouseEvent) => {
                 if (selectedDistrictCode !== code) {
                   layersRef.current.districts?.resetStyle(e.target);
                 }
               },
-              click: (e) => {
+              click: (e: L.LeafletMouseEvent) => {
                 setSelectedDistrictCode(code);
-                map.fitBounds(e.target.getBounds(), { padding: [40, 40] });
-              }
+                map.fitBounds((e.target as L.FeatureGroup).getBounds(), { padding: [40, 40] });
+              },
             });
-          }
+          },
         }).addTo(map);
 
         // If a district was selected, let's keep it highlighted
         if (selectedDistrictCode) {
-          const matchLayer = Object.values(layersRef.current.districts._layers).find(
-            (l) => {
-              const code = l.feature.properties?.DCODE || l.feature.properties?.OBJECTID || l.feature.properties?.name;
-              return code === selectedDistrictCode;
-            }
-          );
+          const matchLayer = Object.values((layersRef.current.districts as any)._layers).find((l: any) => {
+            const code = l.feature.properties?.DCODE || l.feature.properties?.OBJECTID || l.feature.properties?.name;
+            return code === selectedDistrictCode;
+          }) as any;
           if (matchLayer) {
             matchLayer.bringToFront();
           }
@@ -403,7 +429,7 @@ function App() {
               opacity: 0.85,
               fillColor: config.light,
               fillOpacity: basemapMode === 'dark' ? 0.28 : 0.22,
-            }
+            },
           }).addTo(map);
         }
 
@@ -422,15 +448,14 @@ function App() {
                 fillOpacity: 0.95,
               });
             },
-            onEachFeature: (feature, layer) => {
+            onEachFeature: (feature, layer: L.Layer) => {
               layer.bindTooltip(`<strong>${escapeHtml(feature.properties.name)}</strong><br>เขต${escapeHtml(feature.properties.district)}`, {
-                direction: 'top'
+                direction: 'top',
               });
-            }
+            },
           }).addTo(map);
         }
       });
-
     } else if (uiMode === 'custom') {
       // Custom route-analysis rendering
       if (facilities.length > 0) {
@@ -470,19 +495,33 @@ function App() {
         }).addTo(map);
 
         // Autofit map to custom analysis area
-        const fitLayer = layersRef.current.customRoads.getBounds().isValid() 
-          ? layersRef.current.customRoads 
+        const fitLayer = layersRef.current.customRoads.getBounds().isValid()
+          ? layersRef.current.customRoads
           : layersRef.current.customArea;
         if (fitLayer.getBounds().isValid()) {
           map.fitBounds(fitLayer.getBounds(), { padding: [32, 32] });
         }
       }
     }
-  }, [uiMode, districtsGeojson, loadedAccessibilityData, dashboardLayers, dashboardTravelMode, activeLeaderboardCategory, selectedDistrictCode, basemapMode, facilities, analysis]);
+  }, [
+    uiMode,
+    districtsGeojson,
+    loadedAccessibilityData,
+    dashboardLayers,
+    dashboardTravelMode,
+    activeLeaderboardCategory,
+    selectedDistrictCode,
+    basemapMode,
+    facilities,
+    analysis,
+  ]);
 
   // Sync BMA catalog layers (Original background layers)
   const activeBmaLayerIds = useMemo(
-    () => Object.entries(visibleBmaLayers).filter(([, visible]) => visible).map(([id]) => Number(id)),
+    () =>
+      Object.entries(visibleBmaLayers)
+        .filter(([, visible]) => visible)
+        .map(([id]) => Number(id)),
     [visibleBmaLayers],
   );
 
@@ -494,42 +533,42 @@ function App() {
     let cancelled = false;
 
     const layerById = new Map(layerCatalog.layers.map((layer) => [layer.id, layer]));
-    const removeLayer = (id) => {
+    const removeLayer = (id: number) => {
       layersRef.current.bma?.[id]?.remove();
       delete layersRef.current.bma?.[id];
     };
 
     Object.keys(layersRef.current.bma || {}).forEach((id) => {
-      if (!activeBmaLayerIds.includes(Number(id))) removeLayer(id);
+      if (!activeBmaLayerIds.includes(Number(id))) removeLayer(Number(id));
     });
 
-    async function loadVisibleLayer(layerId) {
+    async function loadVisibleLayer(layerId: number) {
       const layer = layerById.get(layerId);
       if (!layer) return;
       const bounds = map.getBounds();
       const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(',');
       setLayerLoadStatus((status) => ({ ...status, [layerId]: { loading: true, returned: status[layerId]?.returned || 0 } }));
-      
+
       try {
         const query = `bbox=${encodeURIComponent(bbox)}&maxFeatures=3000&pageSize=1000`;
-        let response = await fetch(`/api/processed-layers/${layerId}/query?${query}`);
+        let response = await fetch(`${API_BASE_URL}/api/processed-layers/${layerId}/query?${query}`);
         let data = await response.json();
         if (!response.ok && response.status === 404) {
-          response = await fetch(`/api/layers/${layerId}/query?${query}`);
+          response = await fetch(`${API_BASE_URL}/api/layers/${layerId}/query?${query}`);
           data = await response.json();
         }
         if (!response.ok) throw new Error(data.error || 'Layer load failed');
         if (cancelled) return;
 
         removeLayer(layerId);
-        
+
         // style function
         const style = styleForBmaLayer(layer);
         const geoJsonLayer = L.geoJSON(data, {
           pane: 'bmaData',
           style: () => style,
           pointToLayer: (_, latlng) => L.circleMarker(latlng, { ...style, pane: 'bmaData' }),
-          onEachFeature: (feature, featureLayer) => {
+          onEachFeature: (feature, featureLayer: L.Layer) => {
             // Popup
             const entries = Object.entries(feature.properties || {})
               .filter(([, value]) => value !== null && value !== undefined && value !== '')
@@ -551,7 +590,7 @@ function App() {
             source: data.source || 'live-service',
           },
         }));
-      } catch (error) {
+      } catch (error: any) {
         if (!cancelled) {
           setLayerLoadStatus((status) => ({
             ...status,
@@ -561,7 +600,7 @@ function App() {
       }
     }
 
-    function styleForBmaLayer(layer) {
+    function styleForBmaLayer(layer: BmaLayer): L.PathOptions {
       const color = BMA_LAYER_PALETTE[layer.id] || '#0f766e';
       const darkBoost = basemapMode === 'dark';
       if (layer.geometryType === 'esriGeometryPolygon') {
@@ -612,7 +651,7 @@ function App() {
     setBusy(true);
     setMessage(`กำลังคำนวณโครงข่ายเข้าถึงใน ${travelMinutes} นาที...`);
     try {
-      const response = await fetch('/api/analyze', {
+      const response = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ facilities, travelMinutes, speedKmh }),
@@ -621,7 +660,7 @@ function App() {
       if (!response.ok) throw new Error(data.error || 'Analysis failed');
       setAnalysis(data);
       setMessage(`วิเคราะห์เครือข่าย ${travelMinutes} นาทีเสร็จสมบูรณ์`);
-    } catch (error) {
+    } catch (error: any) {
       setMessage(error.message);
     } finally {
       setBusy(false);
@@ -655,38 +694,36 @@ function App() {
     };
   }, [dashboardStats, activeLeaderboardCategory, dashboardTravelMode]);
 
-  const sortedDistrictRankings = useMemo(() => {
+  const sortedDistrictRankings = useMemo<DistrictLeaderboardItem[]>(() => {
     if (!dashboardStats || !districtsGeojson) return [];
-    
+
     const key = `${activeLeaderboardCategory}_${dashboardTravelMode}`;
     return Object.values(dashboardStats.districts)
-      .map(d => ({
+      .map((d) => ({
         code: d.code,
         name: d.name,
-        score: d.coverage[key] || 0
+        score: d.coverage[key] || 0,
       }))
-      .filter(d => d.name.includes(districtSearch.trim()))
+      .filter((d) => d.name.includes(districtSearch.trim()))
       .sort((a, b) => b.score - a.score);
   }, [dashboardStats, districtsGeojson, activeLeaderboardCategory, dashboardTravelMode, districtSearch]);
 
-  const handleDistrictLeaderboardClick = (districtCode) => {
+  const handleDistrictLeaderboardClick = (districtCode: string | number) => {
     setSelectedDistrictCode(districtCode);
     const map = mapRef.current;
     if (!map || !layersRef.current.districts) return;
-    
+
     // Find the feature layer in leaflet districts group and zoom to it
-    const layer = Object.values(layersRef.current.districts._layers).find(
-      (l) => {
-        const code = l.feature.properties?.DCODE || l.feature.properties?.OBJECTID || l.feature.properties?.name;
-        return code === districtCode;
-      }
-    );
+    const layer = Object.values((layersRef.current.districts as any)._layers).find((l: any) => {
+      const code = l.feature.properties?.DCODE || l.feature.properties?.OBJECTID || l.feature.properties?.name;
+      return code === districtCode;
+    }) as any;
     if (layer) {
       map.fitBounds(layer.getBounds(), { padding: [40, 40] });
     }
   };
 
-  const getDistrictScoreBadgeClass = (score) => {
+  const getDistrictScoreBadgeClass = (score: number) => {
     if (score >= 60) return 'badge-high';
     if (score >= 25) return 'badge-medium';
     return 'badge-low';
@@ -694,11 +731,10 @@ function App() {
 
   return (
     <main className={`app-shell ${basemapMode === 'dark' ? 'is-dark-map' : 'is-light-map'}`}>
-      
       {/* MAP STAGE */}
       <section className="map-stage">
         <div id="map" aria-label="Bangkok service area map" />
-        
+
         {/* Map float toolbar */}
         <div className="map-toolbar" aria-label="Map tools">
           {uiMode === 'custom' && (
@@ -706,10 +742,13 @@ function App() {
               <MapPin size={19} />
             </button>
           )}
-          <button onClick={() => {
-            setSelectedDistrictCode(null);
-            mapRef.current?.setView(BANGKOK_CENTER, 11);
-          }} title="กลับสู่มุมมองกรุงเทพฯ">
+          <button
+            onClick={() => {
+              setSelectedDistrictCode(null);
+              mapRef.current?.setView(BANGKOK_CENTER, 11);
+            }}
+            title="กลับสู่มุมมองกรุงเทพฯ"
+          >
             <RefreshCw size={18} />
           </button>
           <button
@@ -724,14 +763,11 @@ function App() {
             </button>
           )}
         </div>
-        <div className="map-mode-badge">
-          {uiMode === 'dashboard' ? '📊 โหมดเมือง 15 นาที' : '📍 โหมดวิเคราะห์กำหนดเอง'}
-        </div>
+        <div className="map-mode-badge">{uiMode === 'dashboard' ? '📊 โหมดเมือง 15 นาที' : '📍 โหมดวิเคราะห์กำหนดเอง'}</div>
       </section>
 
       {/* CONTROL SIDEBAR */}
       <aside className="control-panel">
-        
         {/* BRAND ROW */}
         <div className="brand-row">
           <div className="brand-mark">
@@ -745,8 +781,8 @@ function App() {
 
         {/* DUAL MODE TABS */}
         <div className="mode-tabs">
-          <button 
-            className={uiMode === 'dashboard' ? 'is-active' : ''} 
+          <button
+            className={uiMode === 'dashboard' ? 'is-active' : ''}
             onClick={() => {
               setUiMode('dashboard');
               setMessage('เมือง 15 นาที: เลือกชั้นข้อมูลและโหมดเพื่อวิเคราะห์การเข้าถึง');
@@ -754,8 +790,8 @@ function App() {
           >
             <Layout size={16} /> เมือง 15 นาที
           </button>
-          <button 
-            className={uiMode === 'custom' ? 'is-active' : ''} 
+          <button
+            className={uiMode === 'custom' ? 'is-active' : ''}
             onClick={() => {
               setUiMode('custom');
               setMessage('คลิกบนแผนที่เพื่อปักหมุดจุดบริการของคุณ');
@@ -782,17 +818,11 @@ function App() {
                 <h2>1. โหมดและเวลาเดินทาง</h2>
               </div>
               <div className="travel-mode-selector">
-                <button
-                  className={dashboardTravelMode === 'walk' ? 'is-active' : ''}
-                  onClick={() => setDashboardTravelMode('walk')}
-                >
+                <button className={dashboardTravelMode === 'walk' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('walk')}>
                   <Footprints size={18} />
                   <span>เดิน (15 นาที)</span>
                 </button>
-                <button
-                  className={dashboardTravelMode === 'cycle' ? 'is-active' : ''}
-                  onClick={() => setDashboardTravelMode('cycle')}
-                >
+                <button className={dashboardTravelMode === 'cycle' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('cycle')}>
                   <Bike size={18} />
                   <span>จักรยาน (15 นาที)</span>
                 </button>
@@ -805,11 +835,12 @@ function App() {
                 {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
                   const isVisible = dashboardLayers[key];
                   const isActive = activeLeaderboardCategory === key;
-                  const isLayerLoading = loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
-                  
+                  const isLayerLoading =
+                    loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
+
                   return (
-                    <div 
-                      key={key} 
+                    <div
+                      key={key}
                       className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
                       onClick={() => setActiveLeaderboardCategory(key)}
                       title="คลิกเพื่อเลือกดูตารางการจัดอันดับเขตด้านล่าง"
@@ -819,14 +850,14 @@ function App() {
                           type="checkbox"
                           checked={isVisible}
                           onChange={(e) => {
-                            setDashboardLayers(prev => ({ ...prev, [key]: e.target.checked }));
+                            setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
                           }}
                         />
                         <span className="layer-dot" style={{ backgroundColor: config.primary }} />
                         <span className="layer-emoji">{config.emoji}</span>
                         <span className="layer-title">{config.name}</span>
                       </label>
-                      
+
                       {isLayerLoading ? (
                         <Loader2 className="spin" size={14} style={{ color: '#64748b' }} />
                       ) : (
@@ -846,21 +877,28 @@ function App() {
                 <div className="result-head">
                   <div>
                     <span>อัตราความครอบคลุมของกรุงเทพฯ</span>
-                    <h2>{selectedCategoryStats.emoji} {selectedCategoryStats.name}</h2>
+                    <h2>
+                      {selectedCategoryStats.emoji} {selectedCategoryStats.name}
+                    </h2>
                   </div>
-                  <strong style={{ backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].light + '33', color: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].fill }}>
+                  <strong
+                    style={{
+                      backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].light + '33',
+                      color: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].fill,
+                    }}
+                  >
                     {selectedCategoryStats.overall}%
                   </strong>
                 </div>
-                
+
                 {/* Visual Progress Bar */}
                 <div className="coverage-progress-bar-bg">
-                  <div 
-                    className="coverage-progress-bar-fill" 
-                    style={{ 
+                  <div
+                    className="coverage-progress-bar-fill"
+                    style={{
                       width: `${selectedCategoryStats.overall}%`,
-                      backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].primary
-                    }} 
+                      backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].primary,
+                    }}
                   />
                 </div>
                 <p className="coverage-description-text">
@@ -877,18 +915,20 @@ function App() {
                 <h2>จัดอันดับความครอบคลุมตามเขตการปกครอง</h2>
                 <span>{sortedDistrictRankings.length} เขต</span>
               </div>
-              
+
               {/* District Search */}
               <div className="search-box-container">
                 <Search size={16} className="search-icon" />
-                <input 
-                  type="text" 
-                  placeholder="ค้นหาเขตในกรุงเทพฯ..." 
+                <input
+                  type="text"
+                  placeholder="ค้นหาเขตในกรุงเทพฯ..."
                   value={districtSearch}
                   onChange={(e) => setDistrictSearch(e.target.value)}
                 />
                 {districtSearch && (
-                  <button className="clear-search-btn" onClick={() => setDistrictSearch('')}>×</button>
+                  <button className="clear-search-btn" onClick={() => setDistrictSearch('')}>
+                    ×
+                  </button>
                 )}
               </div>
 
@@ -897,28 +937,21 @@ function App() {
                 {sortedDistrictRankings.map((district, index) => {
                   const isSelected = selectedDistrictCode === district.code;
                   return (
-                    <div 
+                    <div
                       key={district.code}
                       className={`leaderboard-item ${isSelected ? 'is-selected' : ''}`}
                       onClick={() => handleDistrictLeaderboardClick(district.code)}
                     >
                       <span className="rank-num">#{index + 1}</span>
                       <span className="district-name">เขต{district.name}</span>
-                      <span className={`score-badge ${getDistrictScoreBadgeClass(district.score)}`}>
-                        {district.score}%
-                      </span>
+                      <span className={`score-badge ${getDistrictScoreBadgeClass(district.score)}`}>{district.score}%</span>
                     </div>
                   );
                 })}
-                {sortedDistrictRankings.length === 0 && (
-                  <p className="empty-search-text">ไม่พบเขตที่ค้นหา</p>
-                )}
+                {sortedDistrictRankings.length === 0 && <p className="empty-search-text">ไม่พบเขตที่ค้นหา</p>}
               </div>
               {selectedDistrictCode && (
-                <button 
-                  className="reset-district-selection-btn"
-                  onClick={() => setSelectedDistrictCode(null)}
-                >
+                <button className="reset-district-selection-btn" onClick={() => setSelectedDistrictCode(null)}>
                   ล้างการเลือกเขต
                 </button>
               )}
@@ -951,14 +984,14 @@ function App() {
 
               {facilities.length > 0 && (
                 <div className="facility-chips">
-                  {facilities.map((facility, idx) => (
+                  {facilities.map((facility) => (
                     <span key={facility.id} className="poi-chip">
                       {facility.name}
-                      <button 
+                      <button
                         className="delete-chip-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setFacilities(prev => prev.filter(f => f.id !== facility.id));
+                          setFacilities((prev) => prev.filter((f) => f.id !== facility.id));
                           setAnalysis(null);
                         }}
                       >
@@ -985,11 +1018,10 @@ function App() {
                 />
                 <div className="range-row">
                   <span>5 นาที</span>
-                  position: relative;
                   <strong>{travelMinutes} นาที</strong>
                   <span>60 นาที</span>
                 </div>
-                
+
                 <div className="speed-control" style={{ marginTop: '16px' }}>
                   <label htmlFor="speed-kmh">ความเร็วเฉลี่ยเดินทาง</label>
                   <div>
@@ -1040,10 +1072,12 @@ function App() {
                   <div className="districts compact-districts">
                     <h2>เขตพื้นที่อยู่ในขอบเขตบริการ ({analysis.intersectingDistricts.length} เขต)</h2>
                     <div>
-                      {analysis.intersectingDistricts.slice(0, 15).map((district) => (
+                      {analysis.intersectingDistricts.slice(0, 15).map((district: any) => (
                         <span key={`${district.id}-${district.name}`}>{district.name}</span>
                       ))}
-                      {analysis.intersectingDistricts.length > 15 && <span>...และอีก {analysis.intersectingDistricts.length - 15} เขต</span>}
+                      {analysis.intersectingDistricts.length > 15 && (
+                        <span>...และอีก {analysis.intersectingDistricts.length - 15} เขต</span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1060,8 +1094,12 @@ function App() {
         {/* OTHER BMA LAYERS TOGGLE DRAWER */}
         <section className={`layer-drawer ${layerPanelOpen ? 'is-open' : ''}`} style={{ marginTop: 'auto' }}>
           <button className="layer-drawer-toggle" onClick={() => setLayerPanelOpen((open) => !open)}>
-            <span><Layers size={18} /> ชั้นข้อมูลพื้นฐานกทม.</span>
-            <strong>{activeBmaLayerIds.length} เปิดอยู่ {layerPanelOpen ? '−' : '+'}</strong>
+            <span>
+              <Layers size={18} /> ชั้นข้อมูลพื้นฐานกทม.
+            </span>
+            <strong>
+              {activeBmaLayerIds.length} เปิดอยู่ {layerPanelOpen ? '−' : '+'}
+            </strong>
           </button>
 
           {layerPanelOpen && (
@@ -1091,12 +1129,19 @@ function App() {
               </div>
 
               <div className="layer-actions">
-                <button onClick={() => {
-                  const next = {};
-                  (layerCatalog?.layers || []).forEach(l => next[l.id] = true);
-                  setVisibleBmaLayers(next);
-                }} disabled={!layerCatalog}>เปิดทั้งหมด</button>
-                <button onClick={() => setVisibleBmaLayers({})} disabled={!layerCatalog}>ปิดทั้งหมด</button>
+                <button
+                  onClick={() => {
+                    const next: Record<number, boolean> = {};
+                    (layerCatalog?.layers || []).forEach((l) => (next[l.id] = true));
+                    setVisibleBmaLayers(next);
+                  }}
+                  disabled={!layerCatalog}
+                >
+                  เปิดทั้งหมด
+                </button>
+                <button onClick={() => setVisibleBmaLayers({})} disabled={!layerCatalog}>
+                  ปิดทั้งหมด
+                </button>
               </div>
 
               <div className="dimension-list">
@@ -1115,13 +1160,20 @@ function App() {
                               type="checkbox"
                               checked={Boolean(visibleBmaLayers[layer.id])}
                               onChange={() => {
-                                setVisibleBmaLayers(prev => ({ ...prev, [layer.id]: !prev[layer.id] }));
+                                setVisibleBmaLayers((prev) => ({ ...prev, [layer.id]: !prev[layer.id] }));
                               }}
                             />
-                            <span className="layer-swatch" style={{ backgroundColor: BMA_LAYER_PALETTE[layer.id] || '#0f766e' }} />
+                            <span
+                              className="layer-swatch"
+                              style={{ backgroundColor: BMA_LAYER_PALETTE[layer.id] || '#0f766e' }}
+                            />
                             <span className="layer-name">{layer.name}</span>
                             <small>
-                              {status?.loading ? 'loading' : status ? `${status.returned.toLocaleString()}${status.exceeded ? '+' : ''}` : layer.geometryType?.replace('esriGeometry', '')}
+                              {status?.loading
+                                ? 'loading'
+                                : status
+                                ? `${status.returned.toLocaleString()}${status.exceeded ? '+' : ''}`
+                                : layer.geometryType?.replace('esriGeometry', '')}
                             </small>
                           </label>
                         );
@@ -1141,4 +1193,4 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')!).render(<App />);
