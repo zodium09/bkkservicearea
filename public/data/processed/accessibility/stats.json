@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-07-03T07:30:02.686Z",
+  "generatedAt": "2026-07-03T08:37:34Z",
   "overall": {
     "health": {
-      "walk": 3.24,
-      "cycle": 19.85
+      "walk": 27.23,
+      "cycle": 76.79
     },
     "education": {
-      "walk": 7.52,
-      "cycle": 19.7
+      "walk": 51.37,
+      "cycle": 83.24
     },
     "parks": {
-      "walk": 3.53,
-      "cycle": 19.2
+      "walk": 23.63,
+      "cycle": 71.7
     },
     "transit": {
-      "walk": 1.61,
-      "cycle": 2.15
+      "walk": 9.61,
+      "cycle": 27.07
     }
   },
   "districts": {
@@ -23,700 +23,700 @@
       "code": 1,
       "name": "พญาไท",
       "coverage": {
-        "health_walk": 3.59,
-        "health_cycle": 24.38,
-        "education_walk": 12.04,
-        "education_cycle": 29.01,
-        "parks_walk": 0.9,
-        "parks_cycle": 34.98,
-        "transit_walk": 4.79,
-        "transit_cycle": 3.59
+        "health_walk": 96.61,
+        "health_cycle": 99.73,
+        "education_walk": 99.19,
+        "education_cycle": 99.73,
+        "parks_walk": 45.04,
+        "parks_cycle": 99.73,
+        "transit_walk": 54.65,
+        "transit_cycle": 99.73
       }
     },
     "2": {
       "code": 2,
       "name": "บางรัก",
       "coverage": {
-        "health_walk": 0.6,
-        "health_cycle": 23.93,
-        "education_walk": 13.57,
-        "education_cycle": 33.51,
-        "parks_walk": 0.6,
-        "parks_cycle": 29.38,
-        "transit_walk": 4.79,
-        "transit_cycle": 2.1
+        "health_walk": 98.04,
+        "health_cycle": 98.97,
+        "education_walk": 98.04,
+        "education_cycle": 98.97,
+        "parks_walk": 82.78,
+        "parks_cycle": 98.97,
+        "transit_walk": 95.23,
+        "transit_cycle": 98.97
       }
     },
     "3": {
       "code": 3,
       "name": "บางกอกน้อย",
       "coverage": {
-        "health_walk": 3.29,
-        "health_cycle": 35.58,
-        "education_walk": 23.26,
-        "education_cycle": 36.7,
-        "parks_walk": 1.5,
-        "parks_cycle": 39.33,
-        "transit_walk": 8.98,
-        "transit_cycle": 7.49
+        "health_walk": 68.0,
+        "health_cycle": 98.19,
+        "education_walk": 91.78,
+        "education_cycle": 98.19,
+        "parks_walk": 29.67,
+        "parks_cycle": 98.19,
+        "transit_walk": 51.33,
+        "transit_cycle": 98.19
       }
     },
     "4": {
       "code": 4,
       "name": "บางคอแหลม",
       "coverage": {
-        "health_walk": 2.69,
-        "health_cycle": 33.92,
-        "education_walk": 15.99,
-        "education_cycle": 28.53,
-        "parks_walk": 2.69,
-        "parks_cycle": 39.65,
-        "transit_walk": 0,
-        "transit_cycle": 2.1
+        "health_walk": 68.54,
+        "health_cycle": 88.12,
+        "education_walk": 82.96,
+        "education_cycle": 88.12,
+        "parks_walk": 71.83,
+        "parks_cycle": 88.12,
+        "transit_walk": 0.89,
+        "transit_cycle": 71.44
       }
     },
     "5": {
       "code": 5,
       "name": "จตุจักร",
       "coverage": {
-        "health_walk": 6.29,
-        "health_cycle": 32.48,
-        "education_walk": 12.24,
-        "education_cycle": 23.58,
-        "parks_walk": 4.79,
-        "parks_cycle": 27.15,
-        "transit_walk": 12.57,
-        "transit_cycle": 11.68
+        "health_walk": 54.23,
+        "health_cycle": 98.64,
+        "education_walk": 84.05,
+        "education_cycle": 98.64,
+        "parks_walk": 40.25,
+        "parks_cycle": 98.61,
+        "transit_walk": 44.72,
+        "transit_cycle": 98.04
       }
     },
     "6": {
       "code": 6,
       "name": "สะพานสูง",
       "coverage": {
-        "health_walk": 1.8,
-        "health_cycle": 26.45,
-        "education_walk": 6.75,
-        "education_cycle": 24.82,
-        "parks_walk": 3.59,
-        "parks_cycle": 27.86,
-        "transit_walk": 0.6,
-        "transit_cycle": 3.89
+        "health_walk": 24.79,
+        "health_cycle": 95.32,
+        "education_walk": 71.91,
+        "education_cycle": 97.67,
+        "parks_walk": 36.8,
+        "parks_cycle": 97.67,
+        "transit_walk": 3.28,
+        "transit_cycle": 36.5
       }
     },
     "7": {
       "code": 7,
       "name": "ดินแดง",
       "coverage": {
-        "health_walk": 4.19,
-        "health_cycle": 29.73,
-        "education_walk": 18.14,
-        "education_cycle": 34.96,
-        "parks_walk": 2.99,
-        "parks_cycle": 41.94,
-        "transit_walk": 5.69,
-        "transit_cycle": 2.1
+        "health_walk": 71.32,
+        "health_cycle": 99.72,
+        "education_walk": 99.09,
+        "education_cycle": 99.72,
+        "parks_walk": 71.4,
+        "parks_cycle": 99.72,
+        "transit_walk": 53.77,
+        "transit_cycle": 99.72
       }
     },
     "8": {
       "code": 8,
       "name": "สวนหลวง",
       "coverage": {
-        "health_walk": 2.4,
-        "health_cycle": 30.57,
-        "education_walk": 11.48,
-        "education_cycle": 24.86,
-        "parks_walk": 3.59,
-        "parks_cycle": 31.31,
-        "transit_walk": 3.89,
-        "transit_cycle": 6.59
+        "health_walk": 43.32,
+        "health_cycle": 98.68,
+        "education_walk": 84.35,
+        "education_cycle": 98.9,
+        "parks_walk": 41.47,
+        "parks_cycle": 98.89,
+        "transit_walk": 16.32,
+        "transit_cycle": 85.95
       }
     },
     "9": {
       "code": 9,
       "name": "บางแค",
       "coverage": {
-        "health_walk": 2.1,
-        "health_cycle": 17.38,
-        "education_walk": 10.02,
-        "education_cycle": 23.37,
-        "parks_walk": 2.69,
-        "parks_cycle": 21.44,
-        "transit_walk": 3.59,
-        "transit_cycle": 5.99
+        "health_walk": 30.46,
+        "health_cycle": 94.07,
+        "education_walk": 55.97,
+        "education_cycle": 96.31,
+        "parks_walk": 11.49,
+        "parks_cycle": 89.25,
+        "transit_walk": 9.04,
+        "transit_cycle": 48.89
       }
     },
     "10": {
       "code": 10,
       "name": "บางกอกใหญ่",
       "coverage": {
-        "health_walk": 1.5,
-        "health_cycle": 35.4,
-        "education_walk": 20.41,
-        "education_cycle": 30.72,
-        "parks_walk": 5.99,
-        "parks_cycle": 52.4,
-        "transit_walk": 9.88,
-        "transit_cycle": 4.19
+        "health_walk": 45.44,
+        "health_cycle": 99.79,
+        "education_walk": 98.68,
+        "education_cycle": 99.79,
+        "parks_walk": 84.37,
+        "parks_cycle": 99.79,
+        "transit_walk": 95.39,
+        "transit_cycle": 99.79
       }
     },
     "11": {
       "code": 11,
       "name": "คันนายาว",
       "coverage": {
-        "health_walk": 4.79,
-        "health_cycle": 30.43,
-        "education_walk": 12.21,
-        "education_cycle": 29.36,
-        "parks_walk": 1.8,
-        "parks_cycle": 29.62,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 37.23,
+        "health_cycle": 92.67,
+        "education_walk": 66.37,
+        "education_cycle": 94.21,
+        "parks_walk": 18.83,
+        "parks_cycle": 86.6,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "12": {
       "code": 12,
       "name": "คลองสาน",
       "coverage": {
-        "health_walk": 2.1,
-        "health_cycle": 50.34,
-        "education_walk": 17.12,
-        "education_cycle": 41.31,
-        "parks_walk": 2.4,
-        "parks_cycle": 32.54,
-        "transit_walk": 4.79,
-        "transit_cycle": 1.8
+        "health_walk": 76.95,
+        "health_cycle": 94.99,
+        "education_walk": 92.6,
+        "education_cycle": 95.0,
+        "parks_walk": 65.82,
+        "parks_cycle": 94.99,
+        "transit_walk": 74.05,
+        "transit_cycle": 94.99
       }
     },
     "13": {
       "code": 13,
       "name": "ป้อมปราบศัตรูพ่าย",
       "coverage": {
-        "health_walk": 0.6,
-        "health_cycle": 9.85,
-        "education_walk": 16.24,
-        "education_cycle": 37.41,
-        "parks_walk": 0.3,
-        "parks_cycle": 18.8,
-        "transit_walk": 1.8,
-        "transit_cycle": 0.3
+        "health_walk": 99.27,
+        "health_cycle": 99.78,
+        "education_walk": 99.27,
+        "education_cycle": 99.78,
+        "parks_walk": 83.78,
+        "parks_cycle": 99.78,
+        "transit_walk": 62.03,
+        "transit_cycle": 99.78
       }
     },
     "14": {
       "code": 14,
       "name": "ประเวศ",
       "coverage": {
-        "health_walk": 3.59,
-        "health_cycle": 19.2,
-        "education_walk": 11.09,
-        "education_cycle": 27.93,
-        "parks_walk": 4.79,
-        "parks_cycle": 33.24,
-        "transit_walk": 0.6,
-        "transit_cycle": 4.19
+        "health_walk": 19.36,
+        "health_cycle": 87.62,
+        "education_walk": 70.01,
+        "education_cycle": 96.91,
+        "parks_walk": 19.2,
+        "parks_cycle": 92.74,
+        "transit_walk": 1.67,
+        "transit_cycle": 26.36
       }
     },
     "15": {
       "code": 15,
       "name": "ภาษีเจริญ",
       "coverage": {
-        "health_walk": 4.49,
-        "health_cycle": 27.56,
-        "education_walk": 15.04,
-        "education_cycle": 32.38,
-        "parks_walk": 2.4,
-        "parks_cycle": 25.09,
-        "transit_walk": 5.99,
-        "transit_cycle": 6.59
+        "health_walk": 58.59,
+        "health_cycle": 98.19,
+        "education_walk": 77.68,
+        "education_cycle": 98.27,
+        "parks_walk": 30.87,
+        "parks_cycle": 93.9,
+        "transit_walk": 35.57,
+        "transit_cycle": 85.01
       }
     },
     "16": {
       "code": 16,
       "name": "สายไหม",
       "coverage": {
-        "health_walk": 3.29,
-        "health_cycle": 24.99,
-        "education_walk": 6.03,
-        "education_cycle": 23.95,
-        "parks_walk": 3.59,
-        "parks_cycle": 21.87,
-        "transit_walk": 2.69,
-        "transit_cycle": 3.29
+        "health_walk": 19.05,
+        "health_cycle": 91.08,
+        "education_walk": 56.94,
+        "education_cycle": 96.71,
+        "parks_walk": 29.08,
+        "parks_cycle": 96.56,
+        "transit_walk": 8.41,
+        "transit_cycle": 37.12
       }
     },
     "17": {
       "code": 17,
       "name": "หลักสี่",
       "coverage": {
-        "health_walk": 4.19,
-        "health_cycle": 25.07,
-        "education_walk": 9.07,
-        "education_cycle": 27.78,
-        "parks_walk": 3.89,
-        "parks_cycle": 25.27,
-        "transit_walk": 0.3,
-        "transit_cycle": 3.59
+        "health_walk": 41.57,
+        "health_cycle": 98.37,
+        "education_walk": 65.74,
+        "education_cycle": 97.54,
+        "parks_walk": 35.54,
+        "parks_cycle": 91.53,
+        "transit_walk": 1.61,
+        "transit_cycle": 40.27
       }
     },
     "18": {
       "code": 18,
       "name": "บางเขน",
       "coverage": {
-        "health_walk": 2.99,
-        "health_cycle": 22.14,
-        "education_walk": 7.94,
-        "education_cycle": 25.61,
-        "parks_walk": 2.1,
-        "parks_cycle": 24.99,
-        "transit_walk": 4.19,
-        "transit_cycle": 2.99
+        "health_walk": 12.66,
+        "health_cycle": 83.95,
+        "education_walk": 63.94,
+        "education_cycle": 96.99,
+        "parks_walk": 26.58,
+        "parks_cycle": 87.42,
+        "transit_walk": 14.89,
+        "transit_cycle": 40.99
       }
     },
     "19": {
       "code": 19,
       "name": "ลาดพร้าว",
       "coverage": {
-        "health_walk": 3.29,
-        "health_cycle": 32.71,
-        "education_walk": 8.6,
-        "education_cycle": 23.19,
-        "parks_walk": 2.4,
-        "parks_cycle": 27.54,
-        "transit_walk": 0,
-        "transit_cycle": 2.99
+        "health_walk": 42.75,
+        "health_cycle": 97.47,
+        "education_walk": 65.25,
+        "education_cycle": 97.47,
+        "parks_walk": 30.46,
+        "parks_cycle": 97.47,
+        "transit_walk": 0.0,
+        "transit_cycle": 28.85
       }
     },
     "20": {
       "code": 20,
       "name": "สาทร",
       "coverage": {
-        "health_walk": 1.2,
-        "health_cycle": 27.79,
-        "education_walk": 18.92,
-        "education_cycle": 25.13,
-        "parks_walk": 3.89,
-        "parks_cycle": 18.75,
-        "transit_walk": 4.49,
-        "transit_cycle": 2.69
+        "health_walk": 93.49,
+        "health_cycle": 98.49,
+        "education_walk": 97.57,
+        "education_cycle": 98.49,
+        "parks_walk": 83.11,
+        "parks_cycle": 98.49,
+        "transit_walk": 48.88,
+        "transit_cycle": 98.49
       }
     },
     "21": {
       "code": 21,
       "name": "บางพลัด",
       "coverage": {
-        "health_walk": 4.19,
-        "health_cycle": 27.64,
-        "education_walk": 19.03,
-        "education_cycle": 31.58,
-        "parks_walk": 3.89,
-        "parks_cycle": 37.7,
-        "transit_walk": 6.29,
-        "transit_cycle": 5.09
+        "health_walk": 38.26,
+        "health_cycle": 96.35,
+        "education_walk": 94.01,
+        "education_cycle": 96.35,
+        "parks_walk": 31.29,
+        "parks_cycle": 96.34,
+        "transit_walk": 64.7,
+        "transit_cycle": 96.35
       }
     },
     "22": {
       "code": 22,
       "name": "พระนคร",
       "coverage": {
-        "health_walk": 1.5,
-        "health_cycle": 32.1,
-        "education_walk": 16.05,
-        "education_cycle": 13.98,
-        "parks_walk": 2.99,
-        "parks_cycle": 21.98,
-        "transit_walk": 2.1,
-        "transit_cycle": 1.8
+        "health_walk": 80.78,
+        "health_cycle": 93.71,
+        "education_walk": 90.14,
+        "education_cycle": 93.71,
+        "parks_walk": 88.72,
+        "parks_cycle": 93.72,
+        "transit_walk": 43.2,
+        "transit_cycle": 93.71
       }
     },
     "23": {
       "code": 23,
       "name": "สัมพันธวงศ์",
       "coverage": {
-        "health_walk": 0.3,
-        "health_cycle": 32.75,
-        "education_walk": 13.72,
-        "education_cycle": 43.98,
-        "parks_walk": 0,
-        "parks_cycle": 45.79,
-        "transit_walk": 1.5,
-        "transit_cycle": 1.2
+        "health_walk": 91.44,
+        "health_cycle": 94.45,
+        "education_walk": 91.45,
+        "education_cycle": 94.44,
+        "parks_walk": 49.85,
+        "parks_cycle": 94.45,
+        "transit_walk": 91.17,
+        "transit_cycle": 94.44
       }
     },
     "24": {
       "code": 24,
       "name": "ปทุมวัน",
       "coverage": {
-        "health_walk": 2.4,
-        "health_cycle": 13.29,
-        "education_walk": 14.76,
-        "education_cycle": 20.77,
-        "parks_walk": 0.6,
-        "parks_cycle": 24.45,
-        "transit_walk": 3.59,
-        "transit_cycle": 1.2
+        "health_walk": 90.15,
+        "health_cycle": 96.02,
+        "education_walk": 92.68,
+        "education_cycle": 96.03,
+        "parks_walk": 63.44,
+        "parks_cycle": 96.02,
+        "transit_walk": 90.89,
+        "transit_cycle": 96.03
       }
     },
     "25": {
       "code": 25,
       "name": "บึงกุ่ม",
       "coverage": {
-        "health_walk": 2.69,
-        "health_cycle": 25.72,
-        "education_walk": 9.12,
-        "education_cycle": 21.83,
-        "parks_walk": 2.99,
-        "parks_cycle": 21.47,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 44.36,
+        "health_cycle": 98.12,
+        "education_walk": 82.45,
+        "education_cycle": 98.13,
+        "parks_walk": 31.44,
+        "parks_cycle": 98.1,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "26": {
       "code": 26,
       "name": "ยานนาวา",
       "coverage": {
-        "health_walk": 4.49,
-        "health_cycle": 40.01,
-        "education_walk": 19.44,
-        "education_cycle": 35.13,
-        "parks_walk": 4.79,
-        "parks_cycle": 35.28,
-        "transit_walk": 0,
-        "transit_cycle": 1.8
+        "health_walk": 62.92,
+        "health_cycle": 90.03,
+        "education_walk": 86.36,
+        "education_cycle": 90.03,
+        "parks_walk": 62.42,
+        "parks_cycle": 90.03,
+        "transit_walk": 1.49,
+        "transit_cycle": 37.17
       }
     },
     "27": {
       "code": 27,
       "name": "ดุสิต",
       "coverage": {
-        "health_walk": 2.4,
-        "health_cycle": 24.67,
-        "education_walk": 14.23,
-        "education_cycle": 22.19,
-        "parks_walk": 1.5,
-        "parks_cycle": 31.48,
-        "transit_walk": 0.3,
-        "transit_cycle": 3.29
+        "health_walk": 75.74,
+        "health_cycle": 93.71,
+        "education_walk": 91.43,
+        "education_cycle": 93.9,
+        "parks_walk": 63.35,
+        "parks_cycle": 93.71,
+        "transit_walk": 3.52,
+        "transit_cycle": 93.71
       }
     },
     "28": {
       "code": 28,
       "name": "บางซื่อ",
       "coverage": {
-        "health_walk": 3.89,
-        "health_cycle": 50.19,
-        "education_walk": 18.11,
-        "education_cycle": 40.09,
-        "parks_walk": 5.69,
-        "parks_cycle": 33.11,
-        "transit_walk": 10.18,
-        "transit_cycle": 5.09
+        "health_walk": 57.27,
+        "health_cycle": 98.13,
+        "education_walk": 83.83,
+        "education_cycle": 98.18,
+        "parks_walk": 61.03,
+        "parks_cycle": 98.13,
+        "transit_walk": 61.93,
+        "transit_cycle": 98.13
       }
     },
     "29": {
       "code": 29,
       "name": "ห้วยขวาง",
       "coverage": {
-        "health_walk": 5.39,
-        "health_cycle": 34.63,
-        "education_walk": 11.7,
-        "education_cycle": 35.1,
-        "parks_walk": 2.4,
-        "parks_cycle": 30.26,
-        "transit_walk": 5.09,
-        "transit_cycle": 6.89
+        "health_walk": 67.38,
+        "health_cycle": 97.2,
+        "education_walk": 78.96,
+        "education_cycle": 97.2,
+        "parks_walk": 29.91,
+        "parks_cycle": 96.06,
+        "transit_walk": 37.32,
+        "transit_cycle": 96.72
       }
     },
     "30": {
       "code": 30,
       "name": "พระโขนง",
       "coverage": {
-        "health_walk": 1.2,
-        "health_cycle": 21.87,
-        "education_walk": 11.62,
-        "education_cycle": 22.12,
-        "parks_walk": 4.49,
-        "parks_cycle": 24.21,
-        "transit_walk": 4.49,
-        "transit_cycle": 3.29
+        "health_walk": 26.0,
+        "health_cycle": 97.19,
+        "education_walk": 80.68,
+        "education_cycle": 97.21,
+        "parks_walk": 59.8,
+        "parks_cycle": 97.21,
+        "transit_walk": 32.89,
+        "transit_cycle": 92.46
       }
     },
     "31": {
       "code": 31,
       "name": "บางขุนเทียน",
       "coverage": {
-        "health_walk": 4.49,
-        "health_cycle": 10.85,
-        "education_walk": 2.5,
-        "education_cycle": 9.34,
-        "parks_walk": 1.5,
-        "parks_cycle": 8.53,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 9.41,
+        "health_cycle": 49.04,
+        "education_walk": 17.09,
+        "education_cycle": 52.3,
+        "parks_walk": 5.37,
+        "parks_cycle": 33.99,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "32": {
       "code": 32,
       "name": "ราษฎร์บูรณะ",
       "coverage": {
-        "health_walk": 2.1,
-        "health_cycle": 24.33,
-        "education_walk": 15.54,
-        "education_cycle": 28.16,
-        "parks_walk": 2.4,
-        "parks_cycle": 31.12,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 45.01,
+        "health_cycle": 92.08,
+        "education_walk": 76.85,
+        "education_cycle": 92.17,
+        "parks_walk": 34.93,
+        "parks_cycle": 90.91,
+        "transit_walk": 0.0,
+        "transit_cycle": 4.95
       }
     },
     "33": {
       "code": 33,
       "name": "ราชเทวี",
       "coverage": {
-        "health_walk": 2.99,
-        "health_cycle": 30.71,
-        "education_walk": 14.74,
-        "education_cycle": 28.02,
-        "parks_walk": 1.8,
-        "parks_cycle": 23.83,
-        "transit_walk": 5.09,
-        "transit_cycle": 2.99
+        "health_walk": 97.14,
+        "health_cycle": 99.79,
+        "education_walk": 97.76,
+        "education_cycle": 99.78,
+        "parks_walk": 88.41,
+        "parks_cycle": 99.78,
+        "transit_walk": 89.16,
+        "transit_cycle": 99.78
       }
     },
     "34": {
       "code": 34,
       "name": "คลองเตย",
       "coverage": {
-        "health_walk": 3.59,
-        "health_cycle": 30.3,
-        "education_walk": 17.1,
-        "education_cycle": 28.3,
-        "parks_walk": 3.89,
-        "parks_cycle": 29.75,
-        "transit_walk": 5.99,
-        "transit_cycle": 4.49
+        "health_walk": 70.16,
+        "health_cycle": 95.19,
+        "education_walk": 88.47,
+        "education_cycle": 95.19,
+        "parks_walk": 56.23,
+        "parks_cycle": 95.19,
+        "transit_walk": 60.48,
+        "transit_cycle": 95.19
       }
     },
     "35": {
       "code": 35,
       "name": "วัฒนา",
       "coverage": {
-        "health_walk": 2.69,
-        "health_cycle": 35.73,
-        "education_walk": 21.21,
-        "education_cycle": 28.61,
-        "parks_walk": 2.4,
-        "parks_cycle": 32.7,
-        "transit_walk": 8.68,
-        "transit_cycle": 5.09
+        "health_walk": 71.0,
+        "health_cycle": 99.96,
+        "education_walk": 98.75,
+        "education_cycle": 99.96,
+        "parks_walk": 33.36,
+        "parks_cycle": 99.96,
+        "transit_walk": 50.06,
+        "transit_cycle": 99.96
       }
     },
     "36": {
       "code": 36,
       "name": "ทวีวัฒนา",
       "coverage": {
-        "health_walk": 2.99,
-        "health_cycle": 21.67,
-        "education_walk": 4.44,
-        "education_cycle": 21.94,
-        "parks_walk": 1.5,
-        "parks_cycle": 17.95,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 23.1,
+        "health_cycle": 90.85,
+        "education_walk": 34.7,
+        "education_cycle": 93.61,
+        "parks_walk": 8.09,
+        "parks_cycle": 68.24,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "37": {
       "code": 37,
       "name": "หนองแขม",
       "coverage": {
-        "health_walk": 2.1,
-        "health_cycle": 18.1,
-        "education_walk": 5.61,
-        "education_cycle": 22.17,
-        "parks_walk": 2.99,
-        "parks_cycle": 18.73,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 21.09,
+        "health_cycle": 85.96,
+        "education_walk": 46.22,
+        "education_cycle": 92.84,
+        "parks_walk": 20.57,
+        "parks_cycle": 73.94,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "38": {
       "code": 38,
       "name": "ลาดกระบัง",
       "coverage": {
-        "health_walk": 3.89,
-        "health_cycle": 9.98,
-        "education_walk": 2.51,
-        "education_cycle": 10.57,
-        "parks_walk": 2.4,
-        "parks_cycle": 5.3,
-        "transit_walk": 1.5,
-        "transit_cycle": 2.99
+        "health_walk": 10.87,
+        "health_cycle": 59.92,
+        "education_walk": 24.91,
+        "education_cycle": 70.02,
+        "parks_walk": 6.75,
+        "parks_cycle": 38.49,
+        "transit_walk": 1.91,
+        "transit_cycle": 14.34
       }
     },
     "39": {
       "code": 39,
       "name": "หนองจอก",
       "coverage": {
-        "health_walk": 3.59,
-        "health_cycle": 8.13,
-        "education_walk": 2.59,
-        "education_cycle": 8.7,
-        "parks_walk": 7.19,
-        "parks_cycle": 7.41,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 7.17,
+        "health_cycle": 45.39,
+        "education_walk": 21.69,
+        "education_cycle": 58.47,
+        "parks_walk": 13.09,
+        "parks_cycle": 46.2,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "40": {
       "code": 40,
       "name": "บางกะปิ",
       "coverage": {
-        "health_walk": 4.79,
-        "health_cycle": 30.5,
-        "education_walk": 10.66,
-        "education_cycle": 29.37,
-        "parks_walk": 5.09,
-        "parks_cycle": 28.28,
-        "transit_walk": 0.9,
-        "transit_cycle": 3.59
+        "health_walk": 43.89,
+        "health_cycle": 98.99,
+        "education_walk": 87.41,
+        "education_cycle": 99.03,
+        "parks_walk": 43.46,
+        "parks_cycle": 98.85,
+        "transit_walk": 1.59,
+        "transit_cycle": 42.71
       }
     },
     "41": {
       "code": 41,
       "name": "ธนบุรี",
       "coverage": {
-        "health_walk": 3.59,
-        "health_cycle": 43.82,
-        "education_walk": 28.43,
-        "education_cycle": 45.65,
-        "parks_walk": 5.69,
-        "parks_cycle": 50.26,
-        "transit_walk": 8.08,
-        "transit_cycle": 5.99
+        "health_walk": 92.68,
+        "health_cycle": 96.6,
+        "education_walk": 95.69,
+        "education_cycle": 96.6,
+        "parks_walk": 85.24,
+        "parks_cycle": 96.6,
+        "transit_walk": 57.36,
+        "transit_cycle": 96.59
       }
     },
     "42": {
       "code": 42,
       "name": "วังทองหลาง",
       "coverage": {
-        "health_walk": 2.99,
-        "health_cycle": 22.4,
-        "education_walk": 12.37,
-        "education_cycle": 24.55,
-        "parks_walk": 2.69,
-        "parks_cycle": 23.12,
-        "transit_walk": 0,
-        "transit_cycle": 2.99
+        "health_walk": 47.01,
+        "health_cycle": 99.74,
+        "education_walk": 89.17,
+        "education_cycle": 99.74,
+        "parks_walk": 36.66,
+        "parks_cycle": 99.74,
+        "transit_walk": 0.02,
+        "transit_cycle": 41.33
       }
     },
     "43": {
       "code": 43,
       "name": "ตลิ่งชัน",
       "coverage": {
-        "health_walk": 3.89,
-        "health_cycle": 36.46,
-        "education_walk": 9.58,
-        "education_cycle": 30.71,
-        "parks_walk": 2.99,
-        "parks_cycle": 29.27,
-        "transit_walk": 0,
-        "transit_cycle": 3.29
+        "health_walk": 33.7,
+        "health_cycle": 97.47,
+        "education_walk": 61.32,
+        "education_cycle": 97.68,
+        "parks_walk": 21.51,
+        "parks_cycle": 87.3,
+        "transit_walk": 0.16,
+        "transit_cycle": 23.25
       }
     },
     "44": {
       "code": 44,
       "name": "มีนบุรี",
       "coverage": {
-        "health_walk": 1.5,
-        "health_cycle": 15.37,
-        "education_walk": 6.08,
-        "education_cycle": 17.84,
-        "parks_walk": 4.79,
-        "parks_cycle": 15.26,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 12.49,
+        "health_cycle": 70.05,
+        "education_walk": 52.4,
+        "education_cycle": 89.12,
+        "parks_walk": 26.16,
+        "parks_cycle": 80.51,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "45": {
       "code": 45,
       "name": "ทุ่งครุ",
       "coverage": {
-        "health_walk": 5.09,
-        "health_cycle": 28.12,
-        "education_walk": 11.61,
-        "education_cycle": 24.47,
-        "parks_walk": 5.69,
-        "parks_cycle": 26.65,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 33.97,
+        "health_cycle": 88.68,
+        "education_walk": 60.39,
+        "education_cycle": 89.17,
+        "parks_walk": 32.17,
+        "parks_cycle": 86.45,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "46": {
       "code": 46,
       "name": "จอมทอง",
       "coverage": {
-        "health_walk": 5.39,
-        "health_cycle": 39.75,
-        "education_walk": 14.25,
-        "education_cycle": 34.72,
-        "parks_walk": 3.29,
-        "parks_cycle": 42.4,
-        "transit_walk": 2.1,
-        "transit_cycle": 4.79
+        "health_walk": 51.78,
+        "health_cycle": 97.28,
+        "education_walk": 78.65,
+        "education_cycle": 97.37,
+        "parks_walk": 33.51,
+        "parks_cycle": 97.22,
+        "transit_walk": 6.5,
+        "transit_cycle": 41.02
       }
     },
     "47": {
       "code": 47,
       "name": "บางบอน",
       "coverage": {
-        "health_walk": 2.69,
-        "health_cycle": 19.4,
-        "education_walk": 3.08,
-        "education_cycle": 16.28,
-        "parks_walk": 0.9,
-        "parks_cycle": 16.46,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 23.3,
+        "health_cycle": 89.9,
+        "education_walk": 41.89,
+        "education_cycle": 93.04,
+        "parks_walk": 8.6,
+        "parks_cycle": 77.97,
+        "transit_walk": 0.0,
+        "transit_cycle": 1.99
       }
     },
     "48": {
       "code": 48,
       "name": "ดอนเมือง",
       "coverage": {
-        "health_walk": 0.6,
-        "health_cycle": 19.16,
-        "education_walk": 7.14,
-        "education_cycle": 16.37,
-        "parks_walk": 2.99,
-        "parks_cycle": 20.32,
-        "transit_walk": 0.6,
-        "transit_cycle": 1.8
+        "health_walk": 20.33,
+        "health_cycle": 80.92,
+        "education_walk": 58.03,
+        "education_cycle": 82.77,
+        "parks_walk": 34.01,
+        "parks_cycle": 82.87,
+        "transit_walk": 6.42,
+        "transit_cycle": 20.83
       }
     },
     "49": {
       "code": 49,
       "name": "คลองสามวา",
       "coverage": {
-        "health_walk": 1.2,
-        "health_cycle": 12.95,
-        "education_walk": 2.89,
-        "education_cycle": 15.44,
-        "parks_walk": 2.1,
-        "parks_cycle": 12.44,
-        "transit_walk": 0,
-        "transit_cycle": 0
+        "health_walk": 8.77,
+        "health_cycle": 63.79,
+        "education_walk": 30.38,
+        "education_cycle": 82.31,
+        "parks_walk": 7.74,
+        "parks_cycle": 50.79,
+        "transit_walk": 0.0,
+        "transit_cycle": 0.0
       }
     },
     "50": {
       "code": 50,
       "name": "บางนา",
       "coverage": {
-        "health_walk": 2.4,
-        "health_cycle": 25.41,
-        "education_walk": 10.08,
-        "education_cycle": 14.1,
-        "parks_walk": 1.8,
-        "parks_cycle": 16.83,
-        "transit_walk": 3.89,
-        "transit_cycle": 4.19
+        "health_walk": 58.61,
+        "health_cycle": 96.71,
+        "education_walk": 79.32,
+        "education_cycle": 96.71,
+        "parks_walk": 23.57,
+        "parks_cycle": 75.76,
+        "transit_walk": 23.38,
+        "transit_cycle": 72.67
       }
     }
   }

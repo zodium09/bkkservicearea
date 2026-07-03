@@ -5,7 +5,7 @@ import time
 from typing import Dict, Any, List
 import geopandas as gpd
 from shapely.geometry import Point, LineString, MultiLineString, shape, mapping
-from shapely.ops import unary_union
+from shapely.ops import unary_union, linemerge
 import shapely
 import networkx as nx
 import requests
@@ -237,9 +237,16 @@ def main():
                 print("  No roads reached.")
                 continue
 
-            # Buffer reachable roads with Shapely (vectorized, runs in milliseconds!)
-            lines = MultiLineString(reached_coords)
-            service_area_poly = lines.buffer(mode_config["buffer_deg"])
+            # Merge contiguous road segments to minimize feature count and prevent GEOS bad allocation
+            merged = linemerge(reached_coords)
+            if hasattr(merged, "geoms"):
+                lines_list = list(merged.geoms)
+            else:
+                lines_list = [merged]
+            
+            # Buffer contiguous segments individually and union them using memory-safe cascading union
+            buffers = [line.buffer(mode_config["buffer_deg"]) for line in lines_list]
+            service_area_poly = unary_union(buffers)
             simplified_poly = service_area_poly.simplify(0.00004, preserve_topology=False)
             
             # Save service area GeoJSON
