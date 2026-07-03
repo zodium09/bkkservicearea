@@ -250,6 +250,43 @@ app.get('/api/processed-layers/:id/query', async (req, res) => {
   }
 });
 
+app.get('/api/accessibility/stats', (req, res) => {
+  const statsPath = path.join(__dirname, 'data', 'processed', 'accessibility', 'stats.json');
+  if (!fs.existsSync(statsPath)) {
+    return res.status(404).json({ error: 'Accessibility stats not precomputed yet.' });
+  }
+  try {
+    const stats = JSON.parse(fs.readFileSync(statsPath, 'utf8'));
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read accessibility stats', detail: error.message });
+  }
+});
+
+app.get('/api/accessibility/layer/:category/:type', (req, res) => {
+  const { category, type } = req.params;
+  
+  if (!['health', 'education', 'parks', 'transit'].includes(category)) {
+    return res.status(400).json({ error: 'Invalid category' });
+  }
+  if (!['pois', 'area-walk', 'area-cycle'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid type' });
+  }
+  
+  const layerPath = path.join(__dirname, 'data', 'processed', 'accessibility', `${category}-${type}.geojson`);
+  if (!fs.existsSync(layerPath)) {
+    return res.status(404).json({ error: `Accessibility layer ${category}-${type} not precomputed yet.` });
+  }
+  
+  try {
+    const layer = JSON.parse(fs.readFileSync(layerPath, 'utf8'));
+    res.json(layer);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to read accessibility layer', detail: error.message });
+  }
+});
+
+
 app.get('/api/layers/:id/query', async (req, res) => {
   const layerId = Number(req.params.id);
   const bbox = String(req.query.bbox || '').split(',').map(Number);
@@ -310,6 +347,16 @@ app.get('/api/qgis/status', async (req, res) => {
       ? 'qgis_process is available for automation.'
       : 'qgis_process was not found. Install QGIS or set QGIS_PROCESS to enable native QGIS processing.',
   });
+});
+
+app.get('/api/districts', async (req, res) => {
+  try {
+    const districts = await loadDistricts();
+    if (!districts) return res.status(404).json({ error: 'Districts layer not found.' });
+    res.json(districts);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load districts', detail: error.message });
+  }
 });
 
 async function loadDistricts() {
