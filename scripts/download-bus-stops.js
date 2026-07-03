@@ -1,9 +1,16 @@
 const fs = require('fs');
 const path = require('path');
 
-const bbox = '13.48,100.32,13.98,100.94';
-const query = `[out:json][timeout:60];node["highway"="bus_stop"](${bbox});out;`;
-const url = `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(query)}`;
+const query = `[out:json][timeout:180];
+area["ISO3166-2"="TH-10"]->.searchArea;
+(
+  node["highway"="bus_stop"](area.searchArea);
+  node["public_transport"="platform"](area.searchArea);
+  node["highway"="platform"](area.searchArea);
+  node["amenity"="bus_station"](area.searchArea);
+);
+out;`;
+const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 const outputPath = path.join(__dirname, '..', 'data', 'processed', 'accessibility', 'osm-bus-stops.geojson');
 
 async function download() {
@@ -12,7 +19,7 @@ async function download() {
     const res = await fetch(url, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0'
+        'User-Agent': 'BKKServiceAreaBot/1.0 (accessibility-dashboard@bangkok.go.th)'
       }
     });
     if (!res.ok) {
@@ -21,11 +28,21 @@ async function download() {
     }
     const data = await res.json();
     const elements = data.elements || [];
-    console.log(`Successfully fetched ${elements.length} bus stops.`);
+    
+    // Deduplicate by OSM element ID
+    const seenIds = new Set();
+    const uniqueElements = [];
+    for (const el of elements) {
+      if (el.lat && el.lon && !seenIds.has(el.id)) {
+        seenIds.add(el.id);
+        uniqueElements.push(el);
+      }
+    }
+    console.log(`Successfully fetched ${uniqueElements.length} unique bus stops.`);
 
     const geojson = {
       type: 'FeatureCollection',
-      features: elements.map(el => ({
+      features: uniqueElements.map(el => ({
         type: 'Feature',
         geometry: {
           type: 'Point',

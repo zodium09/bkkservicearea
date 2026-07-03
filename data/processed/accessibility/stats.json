@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-03T17:25:07Z",
+  "generatedAt": "2026-07-03T17:37:16Z",
   "overall": {
     "bkk_hospitals": {
       "walk": 1.41,
@@ -18,8 +18,8 @@
       "cycle": 83.73
     },
     "public_transit": {
-      "walk": 48.44,
-      "cycle": 74.18
+      "walk": 48.38,
+      "cycle": 75.97
     }
   },
   "districts": {
@@ -99,7 +99,7 @@
         "health_centers_cycle": 98.03,
         "schools_walk": 83.32,
         "schools_cycle": 98.64,
-        "public_transit_walk": 90.29,
+        "public_transit_walk": 90.35,
         "public_transit_cycle": 98.64
       }
     },
@@ -115,8 +115,8 @@
         "health_centers_cycle": 92.3,
         "schools_walk": 75.55,
         "schools_cycle": 97.67,
-        "public_transit_walk": 50.42,
-        "public_transit_cycle": 97.67
+        "public_transit_walk": 50.41,
+        "public_transit_cycle": 97.68
       }
     },
     "7": {
@@ -131,7 +131,7 @@
         "health_centers_cycle": 99.72,
         "schools_walk": 99.04,
         "schools_cycle": 99.72,
-        "public_transit_walk": 99.13,
+        "public_transit_walk": 99.12,
         "public_transit_cycle": 99.72
       }
     },
@@ -147,8 +147,8 @@
         "health_centers_cycle": 98.47,
         "schools_walk": 85.61,
         "schools_cycle": 98.89,
-        "public_transit_walk": 77.39,
-        "public_transit_cycle": 98.9
+        "public_transit_walk": 77.4,
+        "public_transit_cycle": 98.89
       }
     },
     "9": {
@@ -163,7 +163,7 @@
         "health_centers_cycle": 90.81,
         "schools_walk": 59.98,
         "schools_cycle": 96.31,
-        "public_transit_walk": 65.55,
+        "public_transit_walk": 66.34,
         "public_transit_cycle": 96.25
       }
     },
@@ -195,7 +195,7 @@
         "health_centers_cycle": 77.7,
         "schools_walk": 57.83,
         "schools_cycle": 94.21,
-        "public_transit_walk": 65.76,
+        "public_transit_walk": 65.75,
         "public_transit_cycle": 94.24
       }
     },
@@ -211,8 +211,8 @@
         "health_centers_cycle": 95.0,
         "schools_walk": 92.6,
         "schools_cycle": 94.99,
-        "public_transit_walk": 92.62,
-        "public_transit_cycle": 94.98
+        "public_transit_walk": 92.61,
+        "public_transit_cycle": 94.99
       }
     },
     "13": {
@@ -243,7 +243,7 @@
         "health_centers_cycle": 67.56,
         "schools_walk": 70.18,
         "schools_cycle": 96.91,
-        "public_transit_walk": 53.36,
+        "public_transit_walk": 53.65,
         "public_transit_cycle": 95.7
       }
     },
@@ -259,7 +259,7 @@
         "health_centers_cycle": 98.19,
         "schools_walk": 78.81,
         "schools_cycle": 98.27,
-        "public_transit_walk": 66.62,
+        "public_transit_walk": 67.01,
         "public_transit_cycle": 98.19
       }
     },
@@ -275,8 +275,8 @@
         "health_centers_cycle": 65.34,
         "schools_walk": 59.41,
         "schools_cycle": 96.15,
-        "public_transit_walk": 70.09,
-        "public_transit_cycle": 93.05
+        "public_transit_walk": 68.86,
+        "public_transit_cycle": 92.83
       }
     },
     "17": {
@@ -291,7 +291,7 @@
         "health_centers_cycle": 97.77,
         "schools_walk": 70.73,
         "schools_cycle": 97.74,
-        "public_transit_walk": 63.34,
+        "public_transit_walk": 47.49,
         "public_transit_cycle": 98.54
       }
     },
@@ -307,7 +307,7 @@
         "health_centers_cycle": 68.28,
         "schools_walk": 58.1,
         "schools_cycle": 96.99,
-        "public_transit_walk": 58.95,
+        "public_transit_walk": 58.94,
         "public_transit_cycle": 90.62
       }
     },
@@ -355,7 +355,7 @@
         "health_centers_cycle": 96.21,
         "schools_walk": 94.06,
         "schools_cycle": 96.35,
-        "public_transit_walk": 92.15,
+        "public_transit_walk": 92.16,
         "public_transit_cycle": 96.35
       }
     },
@@ -403,8 +403,8 @@
         "health_centers_cycle": 96.03,
         "schools_walk": 92.7,
         "schools_cycle": 96.02,
-        "public_transit_walk": 92.85,
-        "public_transit_cycle": 96.02
+        "public_transit_walk": 92.86,
+        "public_transit_cycle": 96.03
       }
     },
     "25": {
@@ -419,7 +419,7 @@
         "health_centers_cycle": 71.8,
         "schools_walk": 83.94,
         "schools_cycle": 98.13,
-        "public_transit_walk": 81.86,
+        "public_transit_walk": 81.85,
         "public_transit_cycle": 98.13
       }
     },
@@ -435,7 +435,7 @@
         "health_centers_cycle": 90.03,
         "schools_walk": 86.4,
         "schools_cycle": 90.03,
-        "public_transit_walk": 86.9,
+        "public_transit_walk": 86.91,
         "public_transit_cycle": 90.02
       }
     },
@@ -451,7 +451,7 @@
         "health_centers_cycle": 93.71,
         "schools_walk": 91.65,
         "schools_cycle": 93.9,
-        "public_transit_walk": 91.51,
+        "public_transit_walk": 91.52,
         "public_transit_cycle": 93.71
       }
     },
@@ -467,7 +467,7 @@
         "health_centers_cycle": 98.13,
         "schools_walk": 92.03,
         "schools_cycle": 98.13,
-        "public_transit_walk": 95.14,
+        "public_transit_walk": 94.58,
         "public_transit_cycle": 98.29
       }
     },
@@ -500,7 +500,7 @@
         "schools_walk": 84.35,
         "schools_cycle": 97.21,
         "public_transit_walk": 66.14,
-        "public_transit_cycle": 97.22
+        "public_transit_cycle": 97.21
       }
     },
     "31": {
@@ -515,8 +515,8 @@
         "health_centers_cycle": 43.55,
         "schools_walk": 21.7,
         "schools_cycle": 55.17,
-        "public_transit_walk": 25.19,
-        "public_transit_cycle": 55.08
+        "public_transit_walk": 25.29,
+        "public_transit_cycle": 55.0
       }
     },
     "32": {
@@ -547,7 +547,7 @@
         "health_centers_cycle": 99.78,
         "schools_walk": 97.87,
         "schools_cycle": 99.78,
-        "public_transit_walk": 98.49,
+        "public_transit_walk": 98.48,
         "public_transit_cycle": 99.79
       }
     },
@@ -563,7 +563,7 @@
         "health_centers_cycle": 95.19,
         "schools_walk": 88.67,
         "schools_cycle": 95.19,
-        "public_transit_walk": 91.87,
+        "public_transit_walk": 91.86,
         "public_transit_cycle": 95.19
       }
     },
@@ -595,8 +595,8 @@
         "health_centers_cycle": 85.5,
         "schools_walk": 27.9,
         "schools_cycle": 93.62,
-        "public_transit_walk": 51.68,
-        "public_transit_cycle": 91.86
+        "public_transit_walk": 46.79,
+        "public_transit_cycle": 85.38
       }
     },
     "37": {
@@ -611,8 +611,8 @@
         "health_centers_cycle": 83.46,
         "schools_walk": 49.2,
         "schools_cycle": 92.84,
-        "public_transit_walk": 46.74,
-        "public_transit_cycle": 91.74
+        "public_transit_walk": 45.64,
+        "public_transit_cycle": 91.65
       }
     },
     "38": {
@@ -643,8 +643,8 @@
         "health_centers_cycle": 39.27,
         "schools_walk": 23.63,
         "schools_cycle": 59.86,
-        "public_transit_walk": 3.04,
-        "public_transit_cycle": 18.35
+        "public_transit_walk": 5.89,
+        "public_transit_cycle": 32.13
       }
     },
     "40": {
@@ -659,7 +659,7 @@
         "health_centers_cycle": 94.13,
         "schools_walk": 89.04,
         "schools_cycle": 99.03,
-        "public_transit_walk": 86.72,
+        "public_transit_walk": 86.77,
         "public_transit_cycle": 99.03
       }
     },
@@ -691,7 +691,7 @@
         "health_centers_cycle": 97.41,
         "schools_walk": 92.4,
         "schools_cycle": 99.74,
-        "public_transit_walk": 91.92,
+        "public_transit_walk": 91.91,
         "public_transit_cycle": 99.74
       }
     },
@@ -707,7 +707,7 @@
         "health_centers_cycle": 97.44,
         "schools_walk": 66.06,
         "schools_cycle": 97.68,
-        "public_transit_walk": 86.01,
+        "public_transit_walk": 86.0,
         "public_transit_cycle": 97.67
       }
     },
@@ -724,7 +724,7 @@
         "schools_walk": 53.6,
         "schools_cycle": 89.09,
         "public_transit_walk": 48.02,
-        "public_transit_cycle": 85.1
+        "public_transit_cycle": 85.4
       }
     },
     "45": {
@@ -739,8 +739,8 @@
         "health_centers_cycle": 88.68,
         "schools_walk": 61.19,
         "schools_cycle": 89.17,
-        "public_transit_walk": 42.4,
-        "public_transit_cycle": 84.83
+        "public_transit_walk": 40.97,
+        "public_transit_cycle": 84.38
       }
     },
     "46": {
@@ -756,7 +756,7 @@
         "schools_walk": 79.94,
         "schools_cycle": 97.37,
         "public_transit_walk": 75.45,
-        "public_transit_cycle": 97.34
+        "public_transit_cycle": 97.33
       }
     },
     "47": {
@@ -771,7 +771,7 @@
         "health_centers_cycle": 78.55,
         "schools_walk": 47.38,
         "schools_cycle": 93.11,
-        "public_transit_walk": 55.38,
+        "public_transit_walk": 56.64,
         "public_transit_cycle": 93.1
       }
     },
@@ -787,8 +787,8 @@
         "health_centers_cycle": 65.19,
         "schools_walk": 56.75,
         "schools_cycle": 82.77,
-        "public_transit_walk": 26.66,
-        "public_transit_cycle": 69.9
+        "public_transit_walk": 28.07,
+        "public_transit_cycle": 71.38
       }
     },
     "49": {
@@ -803,8 +803,8 @@
         "health_centers_cycle": 60.27,
         "schools_walk": 31.03,
         "schools_cycle": 83.19,
-        "public_transit_walk": 14.39,
-        "public_transit_cycle": 57.77
+        "public_transit_walk": 13.09,
+        "public_transit_cycle": 56.23
       }
     },
     "50": {
@@ -819,7 +819,7 @@
         "health_centers_cycle": 92.99,
         "schools_walk": 83.44,
         "schools_cycle": 96.71,
-        "public_transit_walk": 78.96,
+        "public_transit_walk": 76.98,
         "public_transit_cycle": 96.71
       }
     }

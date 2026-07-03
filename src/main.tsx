@@ -115,8 +115,6 @@ function App() {
   const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
   const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
 
-  const [busRoutesGeojson, setBusRoutesGeojson] = useState<any>(null);
-  const [showBusRoutes, setShowBusRoutes] = useState<boolean>(true);
 
   // Dynamic analysis states
   const [inspectCoords, setInspectCoords] = useState<L.LatLng | null>(null);
@@ -160,11 +158,6 @@ function App() {
       .then(setDistrictsGeojson)
       .catch((e) => console.error('Failed to load districts boundary:', e));
 
-    // Fetch bus routes overlay
-    fetch('/data/processed/accessibility/bus-routes.geojson')
-      .then((r) => r.json())
-      .then(setBusRoutesGeojson)
-      .catch((e) => console.error('Failed to load bus routes:', e));
 
     // Fetch engine health status
     fetch('/api/engine/status')
@@ -350,26 +343,6 @@ function App() {
       }
     }
 
-    // Render Bus Routes Overlay
-    if (dashboardLayers.public_transit && showBusRoutes && busRoutesGeojson) {
-      layersRef.current.busRoutes = L.geoJSON(busRoutesGeojson, {
-        pane: 'analysisArea',
-        style: (feature) => {
-          return {
-            color: feature?.properties?.color || '#7c3aed',
-            weight: 3.5,
-            opacity: 0.75,
-            dashArray: '5, 8', // dashed style for bus routes
-          };
-        },
-        onEachFeature: (feature, layer: L.Layer) => {
-          layer.bindTooltip(`<strong>${escapeHtml(feature.properties.ref)}</strong><br>${escapeHtml(feature.properties.name)} (${escapeHtml(feature.properties.type)})`, {
-            sticky: true,
-            className: 'district-tooltip'
-          });
-        }
-      }).addTo(map);
-    }
 
     // Draw Accessibility Polygons and POIs
     Object.entries(dashboardLayers).forEach(([category, visible]) => {
@@ -480,8 +453,6 @@ function App() {
     activeLeaderboardCategory,
     selectedDistrictCode,
     basemapMode,
-    busRoutesGeojson,
-    showBusRoutes,
     useCircleMarkers,
   ]);
 
@@ -805,18 +776,6 @@ function App() {
                         </div>
                       )}
 
-                      {key === 'public_transit' && isVisible && (
-                        <div style={{ marginLeft: '26px', marginTop: '6px', fontSize: '0.78rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={showBusRoutes}
-                              onChange={(e) => setShowBusRoutes(e.target.checked)}
-                            />
-                            <span>🚏 แสดงเส้นทางรถเมล์ (Bus Routes)</span>
-                          </label>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
