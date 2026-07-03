@@ -1,0 +1,31 @@
+{
+  "name": "accesibility",
+  "version": "1.0.0",
+  "description": "Bangkok service area analysis web GIS with QGIS automation hooks.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "concurrently \"npm:server\" \"npm:client\"",
+    "client": "vite --host 127.0.0.1 --port 5173",
+    "server": "node server.js",
+    "prepare:data": "node scripts/prepare-bma-layers.js",
+    "build": "vite build",
+    "test": "node --test",
+    "preview": "vite preview --host 127.0.0.1 --port 4173",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@turf/turf": "^7.3.5",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^10.0.3",
+    "express": "^5.2.1",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^1.23.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.1.3"
+  }
+}

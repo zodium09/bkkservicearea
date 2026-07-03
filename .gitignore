@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.playwright-cli/
+output/
+
+# Large generated GIS datasets. Regenerate with `npm run prepare:data`.
+data/raw/
+data/processed/
+
+.env
+.env.*
+*.log
+*.pid
