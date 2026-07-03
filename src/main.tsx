@@ -115,6 +115,36 @@ function App() {
   const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
   const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
 
+  // Sub-type POI filters & global POI marker visibility
+  const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(true);
+  const [subTypeFilters, setSubTypeFilters] = useState<Record<string, boolean>>({
+    school_bma: true,
+    school_obec: true,
+    school_private: true,
+    transit_train: true,
+    transit_boat: true,
+    transit_bus: true,
+  });
+
+  // Auto-sync Active Rank category based on displayed layers
+  const prevLayersRef = useRef(dashboardLayers);
+  useEffect(() => {
+    const newlyChecked = Object.keys(dashboardLayers).find(
+      key => dashboardLayers[key] && !prevLayersRef.current[key]
+    );
+    if (newlyChecked) {
+      setActiveLeaderboardCategory(newlyChecked);
+    } else {
+      if (!dashboardLayers[activeLeaderboardCategory]) {
+        const firstChecked = Object.keys(dashboardLayers).find(key => dashboardLayers[key]);
+        if (firstChecked) {
+          setActiveLeaderboardCategory(firstChecked);
+        }
+      }
+    }
+    prevLayersRef.current = dashboardLayers;
+  }, [dashboardLayers, activeLeaderboardCategory]);
+
 
   // Dynamic analysis states
   const [inspectCoords, setInspectCoords] = useState<L.LatLng | null>(null);
@@ -369,9 +399,28 @@ function App() {
 
       // Render POI point markers
       const poisData = loadedAccessibilityData[poisKey];
-      if (poisData) {
+      if (poisData && showPoiMarkers) {
         layersRef.current.pois[poisKey] = L.geoJSON(poisData, {
           pane: 'servicePoints',
+          filter: (feature) => {
+            const name = feature?.properties?.name || '';
+            const schoolType = feature?.properties?.school_type || '';
+
+            if (category === 'schools') {
+              if (schoolType === 'รร.สังกัด กทม.' && !subTypeFilters.school_bma) return false;
+              if (schoolType === 'รร.สังกัด สพฐ. (รัฐบาล)' && !subTypeFilters.school_obec) return false;
+              if (schoolType === 'รร.เอกชน' && !subTypeFilters.school_private) return false;
+            } else if (category === 'public_transit') {
+              const isTrain = name.includes('สถานีรถไฟฟ้า') || name.includes('BTS') || name.includes('MRT');
+              const isBoat = name.includes('ท่าเรือ') || name.includes('ท่าเทียบเรือ');
+              const isBus = name.includes('ป้ายรถประจำทาง') || name.includes('ป้ายรถเมล์') || name.includes('ป้าย');
+
+              if (isTrain && !subTypeFilters.transit_train) return false;
+              if (isBoat && !subTypeFilters.transit_boat) return false;
+              if (isBus && !subTypeFilters.transit_bus) return false;
+            }
+            return true;
+          },
           pointToLayer: (feature, latlng) => {
             const name = feature.properties.name || 'จุดบริการ';
             let color = config.primary;
@@ -454,6 +503,8 @@ function App() {
     selectedDistrictCode,
     basemapMode,
     useCircleMarkers,
+    showPoiMarkers,
+    subTypeFilters,
   ]);
 
   // Clean up dynamic analysis when switching tabs
@@ -738,8 +789,16 @@ function App() {
                 </button>
               </div>
 
-              <div className="section-header" style={{ marginTop: '18px' }}>
-                <h2>2. ชั้นข้อมูลความสะดวก (เลือกเพื่อแสดงบนแผนที่)</h2>
+              <div className="section-header" style={{ marginTop: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2>2. ชั้นข้อมูลความสะดวก</h2>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', cursor: 'pointer', fontWeight: 600, color: '#0f766e' }}>
+                  <input
+                    type="checkbox"
+                    checked={showPoiMarkers}
+                    onChange={(e) => setShowPoiMarkers(e.target.checked)}
+                  />
+                  <span>📍 แสดงหมุดบริการ</span>
+                </label>
               </div>
               <div className="accessibility-layers-list">
                 {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
@@ -773,6 +832,64 @@ function App() {
                       ) : (
                         <div className="active-indicator-tag" style={{ opacity: isActive ? 1 : 0 }}>
                           Active Rank
+                        </div>
+                      )}
+
+                      {key === 'schools' && isVisible && (
+                        <div style={{ marginLeft: '26px', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={subTypeFilters.school_bma}
+                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, school_bma: e.target.checked }))}
+                            />
+                            <span>🏫 โรงเรียน กทม.</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={subTypeFilters.school_obec}
+                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, school_obec: e.target.checked }))}
+                            />
+                            <span>🏫 โรงเรียน สพฐ.</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={subTypeFilters.school_private}
+                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, school_private: e.target.checked }))}
+                            />
+                            <span>🏫 โรงเรียนเอกชน</span>
+                          </label>
+                        </div>
+                      )}
+
+                      {key === 'public_transit' && isVisible && (
+                        <div style={{ marginLeft: '26px', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={subTypeFilters.transit_train}
+                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, transit_train: e.target.checked }))}
+                            />
+                            <span>🚆 รถไฟฟ้า (BTS/MRT)</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={subTypeFilters.transit_boat}
+                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, transit_boat: e.target.checked }))}
+                            />
+                            <span>🚢 เรือโดยสาร</span>
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={subTypeFilters.transit_bus}
+                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, transit_bus: e.target.checked }))}
+                            />
+                            <span>🚌 ป้ายรถประจำทาง</span>
+                          </label>
                         </div>
                       )}
 
