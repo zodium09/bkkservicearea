@@ -744,9 +744,9 @@ if (require.main === module) {
   });
 }
 
-module.exports = {
-  app,
-  normalizeFacilities,
-  normalizeTravelCost,
-  queryProcessedLayerByBbox,
-};
+app.app = app;
+app.normalizeFacilities = normalizeFacilities;
+app.normalizeTravelCost = normalizeTravelCost;
+app.queryProcessedLayerByBbox = queryProcessedLayerByBbox;
+
+module.exports = app;
