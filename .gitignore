@@ -7,6 +7,9 @@ output/
 data/raw/
 data/processed/*
 !data/processed/accessibility/
+!data/processed/bma-layers/
+data/processed/bma-layers/*
+!data/processed/bma-layers/layer-13.geojson
 
 .env
 .env.*

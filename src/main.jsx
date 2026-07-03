@@ -314,7 +314,7 @@ function App() {
     // --- 2. Redraw layers based on UI Mode ---
     if (uiMode === 'dashboard') {
       // Draw district boundaries
-      if (districtsGeojson) {
+      if (districtsGeojson && districtsGeojson.type === 'FeatureCollection') {
         layersRef.current.districts = L.geoJSON(districtsGeojson, {
           pane: 'districts',
           style: (feature) => {
