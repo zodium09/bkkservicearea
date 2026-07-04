@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import {
   Bike,
   Footprints,
+  Car,
   Loader2,
   Moon,
   Radar,
@@ -197,7 +198,7 @@ function App() {
     police_stations: false,
     communities: false,
   });
-  const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle'>('walk');
+  const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle' | 'drive'>('walk');
   const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState<string>('bkk_hospitals');
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [districtsGeojson, setDistrictsGeojson] = useState<any>(null);
@@ -854,6 +855,10 @@ function App() {
                   <Bike size={18} />
                   <span>จักรยาน (15 นาที)</span>
                 </button>
+                <button className={dashboardTravelMode === 'drive' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('drive')}>
+                  <Car size={18} />
+                  <span>รถยนต์ (15 นาที)</span>
+                </button>
               </div>
 
               <div className="section-header" style={{ marginTop: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1006,7 +1011,7 @@ function App() {
                 </div>
                 <p className="coverage-description-text">
                   ประชากรในพื้นที่ระบายสีสามารถเดินทางด้วย{' '}
-                  <strong>{dashboardTravelMode === 'walk' ? 'เท้า' : 'จักรยาน'}</strong>{' '}
+                  <strong>{dashboardTravelMode === 'walk' ? 'เท้า' : dashboardTravelMode === 'cycle' ? 'จักรยาน' : 'รถยนต์'}</strong>{' '}
                   ไปถึง{selectedCategoryStats.name}ที่ใกล้ที่สุดได้ภายใน 15 นาที
                 </p>
               </section>

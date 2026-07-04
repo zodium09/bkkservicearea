@@ -1652,7 +1652,7 @@ h2 {
 /* Travel Mode Selector */
 .travel-mode-selector {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   margin-top: 8px;
 }
