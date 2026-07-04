@@ -111,6 +111,28 @@ const ACCESSIBILITY_PALETTE: Record<string, AccessibilityConfig> = {
     name: 'ป้ายรถประจำทาง',
     emoji: '🚌',
   },
+  // Safety & Disaster Relief Group
+  fire_stations: {
+    primary: '#ef4444', // Red
+    light: '#fca5a5',
+    fill: '#b91c1c',
+    name: 'สถานีดับเพลิงและกู้ภัย',
+    emoji: '🚒',
+  },
+  police_stations: {
+    primary: '#1e3a8a', // Dark Blue
+    light: '#3b82f6',
+    fill: '#172554',
+    name: 'สถานีตำรวจ',
+    emoji: '👮',
+  },
+  communities: {
+    primary: '#d97706', // Amber
+    light: '#fcd34d',
+    fill: '#78350f',
+    name: 'พื้นที่ชุมชน',
+    emoji: '🏘️',
+  },
 };
 
 const ACCESSIBILITY_GROUPS = [
@@ -128,6 +150,11 @@ const ACCESSIBILITY_GROUPS = [
     id: 'transit',
     name: '🚆 ระบบขนส่งสาธารณะ',
     categories: ['transit_train', 'transit_boat', 'transit_bus']
+  },
+  {
+    id: 'safety_disaster',
+    name: '🚨 ความปลอดภัยและบรรเทาสาธารณภัย',
+    categories: ['fire_stations', 'police_stations', 'communities']
   }
 ];
 
@@ -166,6 +193,9 @@ function App() {
     transit_train: false,
     transit_boat: false,
     transit_bus: false,
+    fire_stations: false,
+    police_stations: false,
+    communities: false,
   });
   const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle'>('walk');
   const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState<string>('bkk_hospitals');
@@ -489,6 +519,15 @@ function App() {
             } else if (category === 'transit_bus') {
               shortName = name.replace('ป้ายรถประจำทาง', 'ป้าย').replace('ป้ายรถเมล์', 'ป้าย');
               emoji = '🚌';
+            } else if (category === 'fire_stations') {
+              shortName = name.replace('สถานีดับเพลิงและกู้ภัย', 'ดับเพลิง').replace('สถานีดับเพลิง', 'ดับเพลิง');
+              emoji = '🚒';
+            } else if (category === 'police_stations') {
+              shortName = name.replace('สถานีตำรวจนครบาล', 'สน.').replace('สถานีตำรวจภูธร', 'สภ.').replace('สถานีตำรวจ', 'ตำรวจ');
+              emoji = '👮';
+            } else if (category === 'communities') {
+              shortName = name.replace('ชุมชน', 'ชช.');
+              emoji = '🏘️';
             }
 
             const iconHtml = `

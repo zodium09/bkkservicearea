@@ -73,6 +73,21 @@ CATEGORIES = {
         "name": "ป้ายรถประจำทาง",
         "where": "1=0",
         "filter": lambda name: False
+    },
+    "fire_stations": {
+        "name": "สถานีดับเพลิงและกู้ภัย",
+        "where": "(NAME LIKE '%ดับเพลิง%' OR NAME LIKE '%กู้ภัย%') AND NOT (NAME LIKE '%ทหาร%' OR NAME LIKE '%สารวัต%')",
+        "filter": lambda name: any(w in name for w in ["ดับเพลิง", "กู้ภัย"]) and not any(w in name for w in ["ทหาร", "สารวัต"])
+    },
+    "police_stations": {
+        "name": "สถานีตำรวจ",
+        "where": "NAME LIKE '%สถานีตำรวจ%' OR NAME LIKE '%ด่านตำรวจ%' OR NAME LIKE '%ที่ทำการตำรวจ%'",
+        "filter": lambda name: any(w in name for w in ["สถานีตำรวจ", "ด่านตำรวจ", "ที่ทำการตำรวจ"])
+    },
+    "communities": {
+        "name": "พื้นที่ชุมชน",
+        "where": "NAME LIKE '%ชุมชน%' AND NOT (NAME LIKE '%ตลาด%' OR NAME LIKE '%ร้าน%' OR NAME LIKE '%ห้าง%')",
+        "filter": lambda name: "ชุมชน" in name and not any(w in name for w in ["ตลาด", "ร้าน", "ห้าง"])
     }
 }
 

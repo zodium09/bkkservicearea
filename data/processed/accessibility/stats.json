@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-03T18:03:44Z",
+  "generatedAt": "2026-07-04T13:24:27Z",
   "overall": {
     "bkk_hospitals": {
       "walk": 1.41,
@@ -40,6 +40,18 @@
     "transit_bus": {
       "walk": 47.25,
       "cycle": 74.85
+    },
+    "fire_stations": {
+      "walk": 8.72,
+      "cycle": 43.79
+    },
+    "police_stations": {
+      "walk": 25.02,
+      "cycle": 72.01
+    },
+    "communities": {
+      "walk": 50.66,
+      "cycle": 83.58
     }
   },
   "districts": {
@@ -66,7 +78,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 82.16,
         "transit_bus_walk": 99.07,
-        "transit_bus_cycle": 99.73
+        "transit_bus_cycle": 99.73,
+        "fire_stations_walk": 29.55,
+        "fire_stations_cycle": 99.73,
+        "police_stations_walk": 64.92,
+        "police_stations_cycle": 99.73,
+        "communities_walk": 57.08,
+        "communities_cycle": 99.73
       }
     },
     "2": {
@@ -92,7 +110,13 @@
         "transit_boat_walk": 53.22,
         "transit_boat_cycle": 98.97,
         "transit_bus_walk": 98.04,
-        "transit_bus_cycle": 98.97
+        "transit_bus_cycle": 98.97,
+        "fire_stations_walk": 72.03,
+        "fire_stations_cycle": 98.97,
+        "police_stations_walk": 97.13,
+        "police_stations_cycle": 98.97,
+        "communities_walk": 97.88,
+        "communities_cycle": 98.97
       }
     },
     "3": {
@@ -118,7 +142,13 @@
         "transit_boat_walk": 35.6,
         "transit_boat_cycle": 98.03,
         "transit_bus_walk": 87.23,
-        "transit_bus_cycle": 98.19
+        "transit_bus_cycle": 98.19,
+        "fire_stations_walk": 18.66,
+        "fire_stations_cycle": 98.16,
+        "police_stations_walk": 70.46,
+        "police_stations_cycle": 98.19,
+        "communities_walk": 92.07,
+        "communities_cycle": 98.19
       }
     },
     "4": {
@@ -144,7 +174,13 @@
         "transit_boat_walk": 35.52,
         "transit_boat_cycle": 88.12,
         "transit_bus_walk": 83.46,
-        "transit_bus_cycle": 88.12
+        "transit_bus_cycle": 88.12,
+        "fire_stations_walk": 24.41,
+        "fire_stations_cycle": 88.12,
+        "police_stations_walk": 56.87,
+        "police_stations_cycle": 88.12,
+        "communities_walk": 83.9,
+        "communities_cycle": 88.12
       }
     },
     "5": {
@@ -170,7 +206,13 @@
         "transit_boat_walk": 5.64,
         "transit_boat_cycle": 39.88,
         "transit_bus_walk": 90.29,
-        "transit_bus_cycle": 98.64
+        "transit_bus_cycle": 98.64,
+        "fire_stations_walk": 11.75,
+        "fire_stations_cycle": 93.49,
+        "police_stations_walk": 44.69,
+        "police_stations_cycle": 98.64,
+        "communities_walk": 58.9,
+        "communities_cycle": 98.64
       }
     },
     "6": {
@@ -196,7 +238,13 @@
         "transit_boat_walk": 3.51,
         "transit_boat_cycle": 43.76,
         "transit_bus_walk": 50.35,
-        "transit_bus_cycle": 97.67
+        "transit_bus_cycle": 97.67,
+        "fire_stations_walk": 9.07,
+        "fire_stations_cycle": 81.79,
+        "police_stations_walk": 14.32,
+        "police_stations_cycle": 82.66,
+        "communities_walk": 52.16,
+        "communities_cycle": 97.67
       }
     },
     "7": {
@@ -222,7 +270,13 @@
         "transit_boat_walk": 1.48,
         "transit_boat_cycle": 56.29,
         "transit_bus_walk": 99.13,
-        "transit_bus_cycle": 99.72
+        "transit_bus_cycle": 99.72,
+        "fire_stations_walk": 47.42,
+        "fire_stations_cycle": 99.72,
+        "police_stations_walk": 91.53,
+        "police_stations_cycle": 99.72,
+        "communities_walk": 91.41,
+        "communities_cycle": 99.72
       }
     },
     "8": {
@@ -248,7 +302,13 @@
         "transit_boat_walk": 34.37,
         "transit_boat_cycle": 97.9,
         "transit_bus_walk": 61.37,
-        "transit_bus_cycle": 98.8
+        "transit_bus_cycle": 98.8,
+        "fire_stations_walk": 11.69,
+        "fire_stations_cycle": 89.22,
+        "police_stations_walk": 41.72,
+        "police_stations_cycle": 98.88,
+        "communities_walk": 83.59,
+        "communities_cycle": 98.89
       }
     },
     "9": {
@@ -274,7 +334,13 @@
         "transit_boat_walk": 16.19,
         "transit_boat_cycle": 60.46,
         "transit_bus_walk": 61.06,
-        "transit_bus_cycle": 96.24
+        "transit_bus_cycle": 96.24,
+        "fire_stations_walk": 7.11,
+        "fire_stations_cycle": 61.83,
+        "police_stations_walk": 20.19,
+        "police_stations_cycle": 94.64,
+        "communities_walk": 52.84,
+        "communities_cycle": 95.21
       }
     },
     "10": {
@@ -300,7 +366,13 @@
         "transit_boat_walk": 70.43,
         "transit_boat_cycle": 99.79,
         "transit_bus_walk": 98.83,
-        "transit_bus_cycle": 99.79
+        "transit_bus_cycle": 99.79,
+        "fire_stations_walk": 22.92,
+        "fire_stations_cycle": 99.79,
+        "police_stations_walk": 97.28,
+        "police_stations_cycle": 99.79,
+        "communities_walk": 98.77,
+        "communities_cycle": 99.79
       }
     },
     "11": {
@@ -326,7 +398,13 @@
         "transit_boat_walk": 4.1,
         "transit_boat_cycle": 28.1,
         "transit_bus_walk": 65.76,
-        "transit_bus_cycle": 94.24
+        "transit_bus_cycle": 94.24,
+        "fire_stations_walk": 0.93,
+        "fire_stations_cycle": 28.9,
+        "police_stations_walk": 38.04,
+        "police_stations_cycle": 92.83,
+        "communities_walk": 66.99,
+        "communities_cycle": 94.24
       }
     },
     "12": {
@@ -352,7 +430,13 @@
         "transit_boat_walk": 72.05,
         "transit_boat_cycle": 94.99,
         "transit_bus_walk": 92.38,
-        "transit_bus_cycle": 95.0
+        "transit_bus_cycle": 95.0,
+        "fire_stations_walk": 34.22,
+        "fire_stations_cycle": 94.99,
+        "police_stations_walk": 87.07,
+        "police_stations_cycle": 95.0,
+        "communities_walk": 92.61,
+        "communities_cycle": 94.99
       }
     },
     "13": {
@@ -378,7 +462,13 @@
         "transit_boat_walk": 99.27,
         "transit_boat_cycle": 99.78,
         "transit_bus_walk": 99.27,
-        "transit_bus_cycle": 99.78
+        "transit_bus_cycle": 99.78,
+        "fire_stations_walk": 99.24,
+        "fire_stations_cycle": 99.78,
+        "police_stations_walk": 99.27,
+        "police_stations_cycle": 99.78,
+        "communities_walk": 99.27,
+        "communities_cycle": 99.78
       }
     },
     "14": {
@@ -404,7 +494,13 @@
         "transit_boat_walk": 0.41,
         "transit_boat_cycle": 25.14,
         "transit_bus_walk": 52.77,
-        "transit_bus_cycle": 95.7
+        "transit_bus_cycle": 95.7,
+        "fire_stations_walk": 7.46,
+        "fire_stations_cycle": 65.94,
+        "police_stations_walk": 33.24,
+        "police_stations_cycle": 96.18,
+        "communities_walk": 52.4,
+        "communities_cycle": 96.41
       }
     },
     "15": {
@@ -430,7 +526,13 @@
         "transit_boat_walk": 38.28,
         "transit_boat_cycle": 85.01,
         "transit_bus_walk": 61.55,
-        "transit_bus_cycle": 98.19
+        "transit_bus_cycle": 98.19,
+        "fire_stations_walk": 1.82,
+        "fire_stations_cycle": 62.31,
+        "police_stations_walk": 42.41,
+        "police_stations_cycle": 98.17,
+        "communities_walk": 84.76,
+        "communities_cycle": 98.37
       }
     },
     "16": {
@@ -456,7 +558,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 0.0,
         "transit_bus_walk": 68.58,
-        "transit_bus_cycle": 92.84
+        "transit_bus_cycle": 92.84,
+        "fire_stations_walk": 4.56,
+        "fire_stations_cycle": 39.4,
+        "police_stations_walk": 15.82,
+        "police_stations_cycle": 69.36,
+        "communities_walk": 62.48,
+        "communities_cycle": 96.7
       }
     },
     "17": {
@@ -482,7 +590,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 0.0,
         "transit_bus_walk": 47.49,
-        "transit_bus_cycle": 98.54
+        "transit_bus_cycle": 98.54,
+        "fire_stations_walk": 0.24,
+        "fire_stations_cycle": 44.8,
+        "police_stations_walk": 24.65,
+        "police_stations_cycle": 98.35,
+        "communities_walk": 73.1,
+        "communities_cycle": 98.54
       }
     },
     "18": {
@@ -508,7 +622,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 0.0,
         "transit_bus_walk": 58.9,
-        "transit_bus_cycle": 90.62
+        "transit_bus_cycle": 90.62,
+        "fire_stations_walk": 6.5,
+        "fire_stations_cycle": 45.66,
+        "police_stations_walk": 18.92,
+        "police_stations_cycle": 82.17,
+        "communities_walk": 62.71,
+        "communities_cycle": 96.96
       }
     },
     "19": {
@@ -534,7 +654,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 0.0,
         "transit_bus_walk": 69.63,
-        "transit_bus_cycle": 97.47
+        "transit_bus_cycle": 97.47,
+        "fire_stations_walk": 0.03,
+        "fire_stations_cycle": 22.26,
+        "police_stations_walk": 22.92,
+        "police_stations_cycle": 97.21,
+        "communities_walk": 74.25,
+        "communities_cycle": 97.47
       }
     },
     "20": {
@@ -560,7 +686,13 @@
         "transit_boat_walk": 24.9,
         "transit_boat_cycle": 98.49,
         "transit_bus_walk": 97.08,
-        "transit_bus_cycle": 98.49
+        "transit_bus_cycle": 98.49,
+        "fire_stations_walk": 85.45,
+        "fire_stations_cycle": 98.49,
+        "police_stations_walk": 93.7,
+        "police_stations_cycle": 98.49,
+        "communities_walk": 97.15,
+        "communities_cycle": 98.49
       }
     },
     "21": {
@@ -586,7 +718,13 @@
         "transit_boat_walk": 49.09,
         "transit_boat_cycle": 96.35,
         "transit_bus_walk": 92.14,
-        "transit_bus_cycle": 96.35
+        "transit_bus_cycle": 96.35,
+        "fire_stations_walk": 28.11,
+        "fire_stations_cycle": 96.34,
+        "police_stations_walk": 63.16,
+        "police_stations_cycle": 96.34,
+        "communities_walk": 94.51,
+        "communities_cycle": 96.35
       }
     },
     "22": {
@@ -612,7 +750,13 @@
         "transit_boat_walk": 90.14,
         "transit_boat_cycle": 93.72,
         "transit_bus_walk": 90.13,
-        "transit_bus_cycle": 93.71
+        "transit_bus_cycle": 93.71,
+        "fire_stations_walk": 30.0,
+        "fire_stations_cycle": 93.71,
+        "police_stations_walk": 86.18,
+        "police_stations_cycle": 93.71,
+        "communities_walk": 88.96,
+        "communities_cycle": 93.72
       }
     },
     "23": {
@@ -638,7 +782,13 @@
         "transit_boat_walk": 91.44,
         "transit_boat_cycle": 94.44,
         "transit_bus_walk": 91.44,
-        "transit_bus_cycle": 94.44
+        "transit_bus_cycle": 94.44,
+        "fire_stations_walk": 80.95,
+        "fire_stations_cycle": 94.45,
+        "police_stations_walk": 91.44,
+        "police_stations_cycle": 94.44,
+        "communities_walk": 91.44,
+        "communities_cycle": 94.44
       }
     },
     "24": {
@@ -664,7 +814,13 @@
         "transit_boat_walk": 61.65,
         "transit_boat_cycle": 96.03,
         "transit_bus_walk": 92.83,
-        "transit_bus_cycle": 96.02
+        "transit_bus_cycle": 96.02,
+        "fire_stations_walk": 44.08,
+        "fire_stations_cycle": 96.02,
+        "police_stations_walk": 83.26,
+        "police_stations_cycle": 96.03,
+        "communities_walk": 74.74,
+        "communities_cycle": 96.02
       }
     },
     "25": {
@@ -690,7 +846,13 @@
         "transit_boat_walk": 1.61,
         "transit_boat_cycle": 25.7,
         "transit_bus_walk": 81.85,
-        "transit_bus_cycle": 98.13
+        "transit_bus_cycle": 98.13,
+        "fire_stations_walk": 9.45,
+        "fire_stations_cycle": 58.24,
+        "police_stations_walk": 34.62,
+        "police_stations_cycle": 98.13,
+        "communities_walk": 83.64,
+        "communities_cycle": 98.13
       }
     },
     "26": {
@@ -716,7 +878,13 @@
         "transit_boat_walk": 47.15,
         "transit_boat_cycle": 90.02,
         "transit_bus_walk": 86.91,
-        "transit_bus_cycle": 90.03
+        "transit_bus_cycle": 90.03,
+        "fire_stations_walk": 28.66,
+        "fire_stations_cycle": 88.93,
+        "police_stations_walk": 63.42,
+        "police_stations_cycle": 90.02,
+        "communities_walk": 86.93,
+        "communities_cycle": 90.03
       }
     },
     "27": {
@@ -742,7 +910,13 @@
         "transit_boat_walk": 48.88,
         "transit_boat_cycle": 93.71,
         "transit_bus_walk": 91.51,
-        "transit_bus_cycle": 93.71
+        "transit_bus_cycle": 93.71,
+        "fire_stations_walk": 52.66,
+        "fire_stations_cycle": 93.71,
+        "police_stations_walk": 67.26,
+        "police_stations_cycle": 93.71,
+        "communities_walk": 83.28,
+        "communities_cycle": 93.7
       }
     },
     "28": {
@@ -768,7 +942,13 @@
         "transit_boat_walk": 18.11,
         "transit_boat_cycle": 89.06,
         "transit_bus_walk": 94.08,
-        "transit_bus_cycle": 98.18
+        "transit_bus_cycle": 98.18,
+        "fire_stations_walk": 37.2,
+        "fire_stations_cycle": 98.13,
+        "police_stations_walk": 84.33,
+        "police_stations_cycle": 98.18,
+        "communities_walk": 81.96,
+        "communities_cycle": 98.13
       }
     },
     "29": {
@@ -794,7 +974,13 @@
         "transit_boat_walk": 19.95,
         "transit_boat_cycle": 59.08,
         "transit_bus_walk": 72.47,
-        "transit_bus_cycle": 97.2
+        "transit_bus_cycle": 97.2,
+        "fire_stations_walk": 51.02,
+        "fire_stations_cycle": 97.18,
+        "police_stations_walk": 71.77,
+        "police_stations_cycle": 97.19,
+        "communities_walk": 53.37,
+        "communities_cycle": 97.2
       }
     },
     "30": {
@@ -820,7 +1006,13 @@
         "transit_boat_walk": 24.63,
         "transit_boat_cycle": 97.22,
         "transit_bus_walk": 51.67,
-        "transit_bus_cycle": 97.21
+        "transit_bus_cycle": 97.21,
+        "fire_stations_walk": 20.18,
+        "fire_stations_cycle": 89.2,
+        "police_stations_walk": 32.64,
+        "police_stations_cycle": 97.22,
+        "communities_walk": 85.83,
+        "communities_cycle": 97.22
       }
     },
     "31": {
@@ -846,7 +1038,13 @@
         "transit_boat_walk": 1.46,
         "transit_boat_cycle": 7.87,
         "transit_bus_walk": 23.83,
-        "transit_bus_cycle": 49.03
+        "transit_bus_cycle": 49.03,
+        "fire_stations_walk": 1.35,
+        "fire_stations_cycle": 12.75,
+        "police_stations_walk": 7.88,
+        "police_stations_cycle": 38.03,
+        "communities_walk": 18.82,
+        "communities_cycle": 54.26
       }
     },
     "32": {
@@ -872,7 +1070,13 @@
         "transit_boat_walk": 23.47,
         "transit_boat_cycle": 81.37,
         "transit_bus_walk": 71.24,
-        "transit_bus_cycle": 92.1
+        "transit_bus_cycle": 92.1,
+        "fire_stations_walk": 24.55,
+        "fire_stations_cycle": 88.1,
+        "police_stations_walk": 25.53,
+        "police_stations_cycle": 92.06,
+        "communities_walk": 79.53,
+        "communities_cycle": 92.21
       }
     },
     "33": {
@@ -898,7 +1102,13 @@
         "transit_boat_walk": 59.52,
         "transit_boat_cycle": 99.79,
         "transit_bus_walk": 98.48,
-        "transit_bus_cycle": 99.79
+        "transit_bus_cycle": 99.79,
+        "fire_stations_walk": 42.34,
+        "fire_stations_cycle": 99.78,
+        "police_stations_walk": 91.85,
+        "police_stations_cycle": 99.78,
+        "communities_walk": 98.26,
+        "communities_cycle": 99.78
       }
     },
     "34": {
@@ -924,7 +1134,13 @@
         "transit_boat_walk": 66.87,
         "transit_boat_cycle": 95.19,
         "transit_bus_walk": 87.58,
-        "transit_bus_cycle": 95.2
+        "transit_bus_cycle": 95.2,
+        "fire_stations_walk": 51.2,
+        "fire_stations_cycle": 95.19,
+        "police_stations_walk": 65.78,
+        "police_stations_cycle": 95.19,
+        "communities_walk": 76.19,
+        "communities_cycle": 95.19
       }
     },
     "35": {
@@ -950,7 +1166,13 @@
         "transit_boat_walk": 42.64,
         "transit_boat_cycle": 99.96,
         "transit_bus_walk": 96.59,
-        "transit_bus_cycle": 99.96
+        "transit_bus_cycle": 99.96,
+        "fire_stations_walk": 12.32,
+        "fire_stations_cycle": 99.96,
+        "police_stations_walk": 44.05,
+        "police_stations_cycle": 99.96,
+        "communities_walk": 70.81,
+        "communities_cycle": 99.96
       }
     },
     "36": {
@@ -976,7 +1198,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 0.0,
         "transit_bus_walk": 46.79,
-        "transit_bus_cycle": 85.37
+        "transit_bus_cycle": 85.37,
+        "fire_stations_walk": 1.73,
+        "fire_stations_cycle": 23.09,
+        "police_stations_walk": 16.48,
+        "police_stations_cycle": 87.13,
+        "communities_walk": 22.06,
+        "communities_cycle": 81.77
       }
     },
     "37": {
@@ -1002,7 +1230,13 @@
         "transit_boat_walk": 3.95,
         "transit_boat_cycle": 34.59,
         "transit_bus_walk": 43.86,
-        "transit_bus_cycle": 90.02
+        "transit_bus_cycle": 90.02,
+        "fire_stations_walk": 5.4,
+        "fire_stations_cycle": 37.86,
+        "police_stations_walk": 17.4,
+        "police_stations_cycle": 92.08,
+        "communities_walk": 68.57,
+        "communities_cycle": 93.12
       }
     },
     "38": {
@@ -1028,7 +1262,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 0.23,
         "transit_bus_walk": 36.69,
-        "transit_bus_cycle": 63.58
+        "transit_bus_cycle": 63.58,
+        "fire_stations_walk": 3.34,
+        "fire_stations_cycle": 29.14,
+        "police_stations_walk": 14.43,
+        "police_stations_cycle": 52.92,
+        "communities_walk": 27.44,
+        "communities_cycle": 70.34
       }
     },
     "39": {
@@ -1054,7 +1294,13 @@
         "transit_boat_walk": 0.67,
         "transit_boat_cycle": 7.35,
         "transit_bus_walk": 5.22,
-        "transit_bus_cycle": 29.26
+        "transit_bus_cycle": 29.26,
+        "fire_stations_walk": 1.21,
+        "fire_stations_cycle": 6.83,
+        "police_stations_walk": 4.76,
+        "police_stations_cycle": 34.55,
+        "communities_walk": 24.33,
+        "communities_cycle": 61.93
       }
     },
     "40": {
@@ -1080,7 +1326,13 @@
         "transit_boat_walk": 31.11,
         "transit_boat_cycle": 77.93,
         "transit_bus_walk": 86.78,
-        "transit_bus_cycle": 99.03
+        "transit_bus_cycle": 99.03,
+        "fire_stations_walk": 13.63,
+        "fire_stations_cycle": 79.31,
+        "police_stations_walk": 49.44,
+        "police_stations_cycle": 97.47,
+        "communities_walk": 84.72,
+        "communities_cycle": 99.03
       }
     },
     "41": {
@@ -1106,7 +1358,13 @@
         "transit_boat_walk": 73.13,
         "transit_boat_cycle": 97.02,
         "transit_bus_walk": 95.69,
-        "transit_bus_cycle": 96.6
+        "transit_bus_cycle": 96.6,
+        "fire_stations_walk": 40.91,
+        "fire_stations_cycle": 96.59,
+        "police_stations_walk": 95.41,
+        "police_stations_cycle": 96.6,
+        "communities_walk": 95.56,
+        "communities_cycle": 96.6
       }
     },
     "42": {
@@ -1132,7 +1390,13 @@
         "transit_boat_walk": 17.75,
         "transit_boat_cycle": 69.2,
         "transit_bus_walk": 90.84,
-        "transit_bus_cycle": 99.74
+        "transit_bus_cycle": 99.74,
+        "fire_stations_walk": 1.96,
+        "fire_stations_cycle": 86.42,
+        "police_stations_walk": 60.63,
+        "police_stations_cycle": 99.74,
+        "communities_walk": 68.57,
+        "communities_cycle": 99.74
       }
     },
     "43": {
@@ -1158,7 +1422,13 @@
         "transit_boat_walk": 6.8,
         "transit_boat_cycle": 61.86,
         "transit_bus_walk": 85.78,
-        "transit_bus_cycle": 97.68
+        "transit_bus_cycle": 97.68,
+        "fire_stations_walk": 8.08,
+        "fire_stations_cycle": 67.04,
+        "police_stations_walk": 18.78,
+        "police_stations_cycle": 95.01,
+        "communities_walk": 60.68,
+        "communities_cycle": 97.68
       }
     },
     "44": {
@@ -1184,7 +1454,13 @@
         "transit_boat_walk": 6.27,
         "transit_boat_cycle": 59.8,
         "transit_bus_walk": 46.7,
-        "transit_bus_cycle": 81.28
+        "transit_bus_cycle": 81.28,
+        "fire_stations_walk": 7.92,
+        "fire_stations_cycle": 44.23,
+        "police_stations_walk": 15.3,
+        "police_stations_cycle": 65.74,
+        "communities_walk": 56.63,
+        "communities_cycle": 87.99
       }
     },
     "45": {
@@ -1210,7 +1486,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 1.15,
         "transit_bus_walk": 40.97,
-        "transit_bus_cycle": 84.38
+        "transit_bus_cycle": 84.38,
+        "fire_stations_walk": 5.7,
+        "fire_stations_cycle": 45.41,
+        "police_stations_walk": 24.02,
+        "police_stations_cycle": 78.02,
+        "communities_walk": 59.83,
+        "communities_cycle": 89.45
       }
     },
     "46": {
@@ -1236,7 +1518,13 @@
         "transit_boat_walk": 12.44,
         "transit_boat_cycle": 76.44,
         "transit_bus_walk": 75.13,
-        "transit_bus_cycle": 97.33
+        "transit_bus_cycle": 97.33,
+        "fire_stations_walk": 15.13,
+        "fire_stations_cycle": 65.92,
+        "police_stations_walk": 30.94,
+        "police_stations_cycle": 97.36,
+        "communities_walk": 77.36,
+        "communities_cycle": 97.37
       }
     },
     "47": {
@@ -1262,7 +1550,13 @@
         "transit_boat_walk": 5.91,
         "transit_boat_cycle": 53.53,
         "transit_bus_walk": 52.87,
-        "transit_bus_cycle": 93.07
+        "transit_bus_cycle": 93.07,
+        "fire_stations_walk": 0.0,
+        "fire_stations_cycle": 7.41,
+        "police_stations_walk": 25.48,
+        "police_stations_cycle": 89.11,
+        "communities_walk": 29.54,
+        "communities_cycle": 89.55
       }
     },
     "48": {
@@ -1288,7 +1582,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 0.0,
         "transit_bus_walk": 28.07,
-        "transit_bus_cycle": 71.38
+        "transit_bus_cycle": 71.38,
+        "fire_stations_walk": 7.54,
+        "fire_stations_cycle": 53.68,
+        "police_stations_walk": 13.31,
+        "police_stations_cycle": 69.43,
+        "communities_walk": 68.52,
+        "communities_cycle": 82.77
       }
     },
     "49": {
@@ -1314,7 +1614,13 @@
         "transit_boat_walk": 0.0,
         "transit_boat_cycle": 4.3,
         "transit_bus_walk": 13.09,
-        "transit_bus_cycle": 56.23
+        "transit_bus_cycle": 56.23,
+        "fire_stations_walk": 1.43,
+        "fire_stations_cycle": 14.46,
+        "police_stations_walk": 8.71,
+        "police_stations_cycle": 58.3,
+        "communities_walk": 38.83,
+        "communities_cycle": 84.47
       }
     },
     "50": {
@@ -1340,7 +1646,13 @@
         "transit_boat_walk": 14.69,
         "transit_boat_cycle": 66.01,
         "transit_bus_walk": 76.98,
-        "transit_bus_cycle": 96.71
+        "transit_bus_cycle": 96.71,
+        "fire_stations_walk": 5.12,
+        "fire_stations_cycle": 67.81,
+        "police_stations_walk": 40.58,
+        "police_stations_cycle": 96.71,
+        "communities_walk": 86.17,
+        "communities_cycle": 96.71
       }
     }
   }

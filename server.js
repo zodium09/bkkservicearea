@@ -270,7 +270,8 @@ app.get('/api/accessibility/layer/:category/:type', (req, res) => {
   const allowedCategories = [
     'bkk_hospitals', 'gov_hospitals', 'private_hospitals', 'health_centers',
     'schools_bkk', 'schools_obec', 'schools_private',
-    'transit_train', 'transit_boat', 'transit_bus'
+    'transit_train', 'transit_boat', 'transit_bus',
+    'fire_stations', 'police_stations', 'communities'
   ];
   if (!allowedCategories.includes(category)) {
     return res.status(400).json({ error: 'Invalid category' });
