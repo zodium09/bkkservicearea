@@ -38,6 +38,7 @@ const BASEMAPS = {
 };
 
 const ACCESSIBILITY_PALETTE: Record<string, AccessibilityConfig> = {
+  // Medical & Health Services Group
   bkk_hospitals: {
     primary: '#059669', // Emerald
     light: '#34d399',
@@ -52,6 +53,13 @@ const ACCESSIBILITY_PALETTE: Record<string, AccessibilityConfig> = {
     name: 'โรงพยาบาลรัฐอื่นๆ',
     emoji: '🏥',
   },
+  private_hospitals: {
+    primary: '#0ea5e9', // Sky Blue
+    light: '#38bdf8',
+    fill: '#0369a1',
+    name: 'โรงพยาบาลเอกชน',
+    emoji: '🏥',
+  },
   health_centers: {
     primary: '#0d9488', // Teal
     light: '#2dd4bf',
@@ -59,21 +67,69 @@ const ACCESSIBILITY_PALETTE: Record<string, AccessibilityConfig> = {
     name: 'ศูนย์บริการสาธารณสุข (ศบส.)',
     emoji: '🩺',
   },
-  schools: {
+  // Schools & Education Group
+  schools_bkk: {
     primary: '#ea580c', // Orange
     light: '#f97316',
     fill: '#c2410c',
-    name: 'โรงเรียนและสถานศึกษา',
+    name: 'โรงเรียนสังกัด กทม.',
     emoji: '🏫',
   },
-  public_transit: {
+  schools_obec: {
+    primary: '#d97706', // Amber
+    light: '#fbbf24',
+    fill: '#b45309',
+    name: 'โรงเรียนสังกัด สพฐ. (รัฐบาล)',
+    emoji: '🏫',
+  },
+  schools_private: {
+    primary: '#b45309', // Brown
+    light: '#f59e0b',
+    fill: '#78350f',
+    name: 'โรงเรียนเอกชน',
+    emoji: '🏫',
+  },
+  // Public Transit Group
+  transit_train: {
     primary: '#7c3aed', // Purple
     light: '#a78bfa',
     fill: '#6d28d9',
-    name: 'ระบบขนส่งสาธารณะ',
+    name: 'รถไฟฟ้า (BTS/MRT)',
     emoji: '🚆',
   },
+  transit_boat: {
+    primary: '#0284c7', // Sky Blue
+    light: '#38bdf8',
+    fill: '#0369a1',
+    name: 'เรือโดยสาร',
+    emoji: '🚢',
+  },
+  transit_bus: {
+    primary: '#8b5cf6', // Violet
+    light: '#c084fc',
+    fill: '#5b21b6',
+    name: 'ป้ายรถประจำทาง',
+    emoji: '🚌',
+  },
 };
+
+const ACCESSIBILITY_GROUPS = [
+  {
+    id: 'medical',
+    name: '🏥 บริการทางการแพทย์และสาธารณสุข',
+    categories: ['bkk_hospitals', 'gov_hospitals', 'private_hospitals', 'health_centers']
+  },
+  {
+    id: 'schools',
+    name: '🏫 โรงเรียนและสถานศึกษา',
+    categories: ['schools_bkk', 'schools_obec', 'schools_private']
+  },
+  {
+    id: 'transit',
+    name: '🚆 ระบบขนส่งสาธารณะ',
+    categories: ['transit_train', 'transit_boat', 'transit_bus']
+  }
+];
 
 function escapeHtml(value: any): string {
   return String(value)
@@ -102,9 +158,14 @@ function App() {
   const [dashboardLayers, setDashboardLayers] = useState<Record<string, boolean>>({
     bkk_hospitals: true,
     gov_hospitals: false,
+    private_hospitals: false,
     health_centers: false,
-    schools: false,
-    public_transit: false,
+    schools_bkk: false,
+    schools_obec: false,
+    schools_private: false,
+    transit_train: false,
+    transit_boat: false,
+    transit_bus: false,
   });
   const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle'>('walk');
   const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState<string>('bkk_hospitals');
@@ -115,16 +176,8 @@ function App() {
   const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
   const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
 
-  // Sub-type POI filters & global POI marker visibility
+  // Global POI marker visibility
   const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(true);
-  const [subTypeFilters, setSubTypeFilters] = useState<Record<string, boolean>>({
-    school_bma: true,
-    school_obec: true,
-    school_private: true,
-    transit_train: true,
-    transit_boat: true,
-    transit_bus: true,
-  });
 
   // Auto-sync Active Rank category based on displayed layers
   const prevLayersRef = useRef(dashboardLayers);
@@ -402,40 +455,6 @@ function App() {
       if (poisData && showPoiMarkers) {
         layersRef.current.pois[poisKey] = L.geoJSON(poisData, {
           pane: 'servicePoints',
-          filter: (feature) => {
-            const name = feature?.properties?.name || '';
-            const schoolType = feature?.properties?.school_type || '';
-
-            if (category === 'schools') {
-              let sType = schoolType;
-              if (!sType) {
-                if (name.includes('กรุงเทพมหานคร') || name.includes('(กทม.)') || name.includes('สังกัด กทม.') || name.includes('สังกัดกทม.')) {
-                  sType = 'รร.สังกัด กทม.';
-                } else if (name.includes('นานาชาติ') || name.toLowerCase().includes('international') || name.includes('เซนต์') || name.includes('คริสเตียน') || name.includes('เอกชน') || name.includes('อนุบาล') || name.includes('สาธิต') || name.includes('วิทยาลัย')) {
-                  sType = 'รร.เอกชน';
-                } else {
-                  if (name.includes('วัด')) {
-                    sType = 'รร.สังกัด กทม.';
-                  } else {
-                    sType = 'รร.สังกัด สพฐ. (รัฐบาล)';
-                  }
-                }
-              }
-
-              if (sType === 'รร.สังกัด กทม.' && !subTypeFilters.school_bma) return false;
-              if (sType === 'รร.สังกัด สพฐ. (รัฐบาล)' && !subTypeFilters.school_obec) return false;
-              if (sType === 'รร.เอกชน' && !subTypeFilters.school_private) return false;
-            } else if (category === 'public_transit') {
-              const isTrain = name.includes('สถานีรถไฟฟ้า') || name.includes('BTS') || name.includes('MRT');
-              const isBoat = name.includes('ท่าเรือ') || name.includes('ท่าเทียบเรือ');
-              const isBus = !isTrain && !isBoat;
-
-              if (isTrain && !subTypeFilters.transit_train) return false;
-              if (isBoat && !subTypeFilters.transit_boat) return false;
-              if (isBus && !subTypeFilters.transit_bus) return false;
-            }
-            return true;
-          },
           pointToLayer: (feature, latlng) => {
             const name = feature.properties.name || 'จุดบริการ';
             let color = config.primary;
@@ -455,26 +474,21 @@ function App() {
             let shortName = name;
             let emoji = config.emoji;
 
-            if (category === 'schools') {
+            if (category.startsWith('schools_')) {
               shortName = name.replace('โรงเรียน', 'รร.');
             } else if (category === 'health_centers') {
               shortName = name.replace('ศูนย์บริการสาธารณสุข', 'ศบส.');
-            } else if (category === 'bkk_hospitals' || category === 'gov_hospitals') {
+            } else if (category.endsWith('_hospitals')) {
               shortName = name.replace('โรงพยาบาล', 'รพ.');
-            } else if (category === 'public_transit') {
-              if (name.includes('สถานีรถไฟฟ้า') || name.includes('BTS') || name.includes('MRT')) {
-                shortName = name.replace('สถานีรถไฟฟ้าเอ็มอาร์ที', 'MRT ').replace('สถานีรถไฟฟ้าบีทีเอส', 'BTS ');
-                emoji = '🚆';
-                color = '#3b82f6'; // Blue for train
-              } else if (name.includes('ท่าเรือ')) {
-                shortName = name.replace('ท่าเรือโดยสาร', 'ท่า').replace('ท่าเรือ', 'ท่า');
-                emoji = '🚢';
-                color = '#0ea5e9'; // Cyan for boat
-              } else {
-                shortName = name.replace('ป้ายรถประจำทาง', 'ป้าย').replace('ป้ายรถเมล์', 'ป้าย');
-                emoji = '🚌';
-                color = '#8b5cf6'; // Violet for bus
-              }
+            } else if (category === 'transit_train') {
+              shortName = name.replace('สถานีรถไฟฟ้าเอ็มอาร์ที', 'MRT ').replace('สถานีรถไฟฟ้าบีทีเอส', 'BTS ');
+              emoji = '🚆';
+            } else if (category === 'transit_boat') {
+              shortName = name.replace('ท่าเรือโดยสาร', 'ท่า').replace('ท่าเรือ', 'ท่า');
+              emoji = '🚢';
+            } else if (category === 'transit_bus') {
+              shortName = name.replace('ป้ายรถประจำทาง', 'ป้าย').replace('ป้ายรถเมล์', 'ป้าย');
+              emoji = '🚌';
             }
 
             const iconHtml = `
@@ -519,7 +533,6 @@ function App() {
     basemapMode,
     useCircleMarkers,
     showPoiMarkers,
-    subTypeFilters,
   ]);
 
   // Clean up dynamic analysis when switching tabs
@@ -815,99 +828,87 @@ function App() {
                   <span>📍 แสดงหมุดบริการ</span>
                 </label>
               </div>
-              <div className="accessibility-layers-list">
-                {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
-                  const isVisible = dashboardLayers[key];
-                  const isActive = activeLeaderboardCategory === key;
-                  const isLayerLoading =
-                    loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
-
+              <div className="accessibility-layers-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {ACCESSIBILITY_GROUPS.map((group) => {
                   return (
-                    <div
-                      key={key}
-                      className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
-                      onClick={() => setActiveLeaderboardCategory(key)}
-                      title="คลิกเพื่อเลือกดูตารางการจัดอันดับเขตด้านล่าง"
-                    >
-                      <label className="acc-layer-label" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isVisible}
-                          onChange={(e) => {
-                            setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
-                          }}
-                        />
-                        <span className="layer-dot" style={{ backgroundColor: config.primary }} />
-                        <span className="layer-emoji">{config.emoji}</span>
-                        <span className="layer-title">{config.name}</span>
-                      </label>
+                    <div key={group.id} className="layer-group-container" style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      backgroundColor: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                      border: basemapMode === 'dark' ? '1px solid #334155' : '1px solid #e2e8f0',
+                    }}>
+                      <div className="layer-group-header" style={{
+                        fontSize: '0.82rem',
+                        fontWeight: 'bold',
+                        color: basemapMode === 'dark' ? '#f1f5f9' : '#0f172a',
+                        marginBottom: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        {group.name}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {group.categories.map((key) => {
+                          const config = ACCESSIBILITY_PALETTE[key];
+                          if (!config) return null;
+                          const isVisible = dashboardLayers[key];
+                          const isActive = activeLeaderboardCategory === key;
+                          const isLayerLoading =
+                            loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
 
-                      {isLayerLoading ? (
-                        <Loader2 className="spin" size={14} style={{ color: '#64748b' }} />
-                      ) : (
-                        <div className="active-indicator-tag" style={{ opacity: isActive ? 1 : 0 }}>
-                          Active Rank
-                        </div>
-                      )}
+                          return (
+                            <div
+                              key={key}
+                              className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
+                              onClick={() => setActiveLeaderboardCategory(key)}
+                              title="คลิกเพื่อเลือกดูตารางการจัดอันดับเขตด้านล่าง"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                backgroundColor: isActive 
+                                  ? (basemapMode === 'dark' ? '#334155' : '#e2e8f0') 
+                                  : 'transparent',
+                                borderLeft: isActive ? `3px solid ${config.primary}` : '3px solid transparent'
+                              }}
+                            >
+                              <label className="acc-layer-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', flex: 1 }} onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="checkbox"
+                                  checked={isVisible}
+                                  onChange={(e) => {
+                                    setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
+                                  }}
+                                />
+                                <span className="layer-dot" style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: config.primary }} />
+                                <span className="layer-emoji" style={{ fontSize: '1rem' }}>{config.emoji}</span>
+                                <span className="layer-title" style={{ fontSize: '0.8rem', fontWeight: 500, color: basemapMode === 'dark' ? '#e2e8f0' : '#1e293b' }}>{config.name}</span>
+                              </label>
 
-                      {key === 'schools' && isVisible && (
-                        <div style={{ marginLeft: '26px', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={subTypeFilters.school_bma}
-                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, school_bma: e.target.checked }))}
-                            />
-                            <span>🏫 โรงเรียน กทม.</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={subTypeFilters.school_obec}
-                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, school_obec: e.target.checked }))}
-                            />
-                            <span>🏫 โรงเรียน สพฐ.</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={subTypeFilters.school_private}
-                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, school_private: e.target.checked }))}
-                            />
-                            <span>🏫 โรงเรียนเอกชน</span>
-                          </label>
-                        </div>
-                      )}
-
-                      {key === 'public_transit' && isVisible && (
-                        <div style={{ marginLeft: '26px', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.75rem', color: basemapMode === 'dark' ? '#94a3b8' : '#64748b' }} onClick={(e) => e.stopPropagation()}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={subTypeFilters.transit_train}
-                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, transit_train: e.target.checked }))}
-                            />
-                            <span>🚆 รถไฟฟ้า (BTS/MRT)</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={subTypeFilters.transit_boat}
-                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, transit_boat: e.target.checked }))}
-                            />
-                            <span>🚢 เรือโดยสาร</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={subTypeFilters.transit_bus}
-                              onChange={(e) => setSubTypeFilters(prev => ({ ...prev, transit_bus: e.target.checked }))}
-                            />
-                            <span>🚌 ป้ายรถประจำทาง</span>
-                          </label>
-                        </div>
-                      )}
-
+                              {isLayerLoading ? (
+                                <Loader2 className="spin" size={12} style={{ color: '#64748b' }} />
+                              ) : (
+                                <div className="active-indicator-tag" style={{ 
+                                  opacity: isActive ? 1 : 0,
+                                  fontSize: '0.65rem',
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  backgroundColor: config.primary,
+                                  color: 'white',
+                                  fontWeight: 'bold'
+                                }}>
+                                  Active Rank
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })}
@@ -1031,9 +1032,9 @@ function App() {
                   <span>Engine: PostGIS + pgRouting พร้อมใช้งาน</span>
                 </div>
               ) : (
-                <div style={{ padding: '10px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, marginTop: '8px' }}>
+                <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: '#d97706', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, marginTop: '8px' }}>
                   <Database size={16} />
-                  <span>ระบบวิเคราะห์เครือข่ายถนนยังไม่พร้อม กรุณาตรวจสอบ PostGIS/pgRouting</span>
+                  <span>PostGIS ออฟไลน์ - ใช้ระบบประมวลผลสำรอง (JS Fallback)</span>
                 </div>
               )}
 
@@ -1075,17 +1076,17 @@ function App() {
 
               <button
                 onClick={handleAnalyze}
-                disabled={isAnalyzing || !inspectCoords || !engineStatus?.database}
+                disabled={isAnalyzing || !inspectCoords}
                 style={{
                   width: '100%',
                   padding: '12px',
                   borderRadius: '8px',
                   border: 'none',
-                  backgroundColor: isAnalyzing || !inspectCoords || !engineStatus?.database ? '#64748b' : '#0f766e',
+                  backgroundColor: isAnalyzing || !inspectCoords ? '#64748b' : '#0f766e',
                   color: 'white',
                   fontWeight: 700,
                   fontSize: '0.9rem',
-                  cursor: isAnalyzing || !inspectCoords || !engineStatus?.database ? 'not-allowed' : 'pointer',
+                  cursor: isAnalyzing || !inspectCoords ? 'not-allowed' : 'pointer',
                   marginTop: '20px',
                   display: 'flex',
                   alignItems: 'center',

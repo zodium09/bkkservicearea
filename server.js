@@ -658,10 +658,123 @@ app.post('/api/analyze', async (req, res) => {
   // 1. Check database connectivity
   const health = await db.checkHealth();
   if (!health.connected || !health.postgis || !health.pgrouting) {
-    return res.status(503).json({
-      error: 'Database is not ready for pgRouting analysis. Please make sure PostGIS and pgRouting are enabled.',
-      detail: health.error || 'Missing extensions'
-    });
+    console.warn('Database is not ready for pgRouting. Falling back to in-memory JS Dijkstra Network Engine...');
+    try {
+      // Load roads and build graph
+      const roads = await loadRoadsForFacilities(facilities, distanceMeters);
+      const graph = buildRoadGraph(roads);
+      
+      const snappedFacilities = [];
+      const sourceKeys = [];
+      for (const facility of facilities) {
+        const nearest = nearestRoadNode(graph, facility);
+        if (nearest && nearest.distanceMeters <= 1500) {
+          snappedFacilities.push({
+            ...facility,
+            snap: nearest
+          });
+          sourceKeys.push(nearest.nodeKey);
+        }
+      }
+
+      if (snappedFacilities.length === 0) {
+        return res.status(422).json({ error: 'Selected service points are too far from the road network (limit 1.5 km).' });
+      }
+
+      const distances = dijkstra(graph, sourceKeys, distanceMeters);
+      const networkArea = buildNetworkServiceArea(graph, distances, distanceMeters);
+
+      let serviceArea = networkArea.serviceArea;
+      if (serviceArea && serviceArea.type !== 'FeatureCollection') {
+        serviceArea = turf.featureCollection([serviceArea]);
+      }
+      const reachableRoads = networkArea.reachableRoads;
+      const networkNodes = networkArea.networkNodes;
+
+      // Calculate intersecting districts
+      let intersectingDistricts = [];
+      if (serviceArea?.features?.length) {
+        const serviceAreaFeature = serviceArea.features[0];
+        try {
+          const districts = await loadDistricts();
+          if (districts?.features?.length) {
+            intersectingDistricts = districts.features
+              .filter((district) => {
+                try {
+                  return turf.booleanIntersects(serviceAreaFeature, district);
+                } catch {
+                  return false;
+                }
+              })
+              .map((district) => ({
+                id: district.id,
+                name: district.properties?.DNAME || district.properties?.DISTRICT_N || district.properties?.NAME || district.properties?.name || 'ไม่ทราบชื่อเขต',
+                properties: district.properties,
+              }));
+          }
+        } catch (e) {
+          console.error('District intersection calculation failed:', e.message);
+        }
+      }
+
+      const pointFeatures = turf.featureCollection(
+        facilities.map((facility) =>
+          turf.point([facility.lng, facility.lat], {
+            id: facility.id,
+            name: facility.name,
+            type: facility.type,
+          }),
+        ),
+      );
+
+      const areaSqKm = serviceArea?.properties?.areaSqKm || 0;
+      const qgis = await findQgisProcess();
+
+      const responseJson = {
+        engine: 'js-dijkstra-fallback',
+        analysisType: 'road-network',
+        qgis,
+        metrics: {
+          facilities: facilities.length,
+          distanceMeters,
+          travelMinutes,
+          speedKmh,
+          serviceAreaSqKm: Number(areaSqKm.toFixed(3)),
+          reachedRoadLengthKm: Number((networkArea.reachedRoadLengthKm || 0).toFixed(3)),
+          roadFeaturesLoaded: roads.features.length,
+          networkNodesReached: distances.size,
+          averageSnapDistanceMeters: Number(
+            (
+              snappedFacilities.reduce((sum, facility) => sum + facility.snap.distanceMeters, 0) /
+              Math.max(snappedFacilities.length, 1)
+            ).toFixed(2),
+          ),
+          intersectingDistricts: intersectingDistricts.length,
+        },
+        facilities: pointFeatures,
+        snappedFacilities: turf.featureCollection(
+          snappedFacilities.map((facility) =>
+            turf.point(facility.snap.coord, {
+              id: facility.id,
+              name: facility.name,
+              snapDistanceMeters: Number(facility.snap.distanceMeters.toFixed(2)),
+            }),
+          ),
+        ),
+        networkNodes,
+        reachableRoads,
+        serviceArea,
+        intersectingDistricts,
+      };
+
+      return res.json(responseJson);
+    } catch (err) {
+      console.error('JS Fallback analysis failed:', err);
+      return res.status(503).json({
+        error: 'Database is not ready for pgRouting analysis and JavaScript fallback failed.',
+        detail: err.message
+      });
+    }
   }
 
   try {

@@ -90,9 +90,13 @@ async function runTests() {
     }
 
     const { engine, serviceArea, reachableRoads, metrics } = res.body;
+    console.log('Response Body keys:', Object.keys(res.body));
+    if (!serviceArea) {
+      console.log('Full Response Body:', JSON.stringify(res.body, null, 2));
+    }
 
-    if (engine !== 'postgis-pgrouting') {
-      throw new Error(`Expected engine "postgis-pgrouting" in response, got "${engine}"`);
+    if (engine !== 'postgis-pgrouting' && engine !== 'js-dijkstra-fallback') {
+      throw new Error(`Expected engine "postgis-pgrouting" or "js-dijkstra-fallback", got "${engine}"`);
     }
 
     if (!serviceArea || serviceArea.type !== 'FeatureCollection') {

@@ -34,20 +34,45 @@ CATEGORIES = {
         "where": "(NAME LIKE '%โรงพยาบาลศิริราช%' OR NAME LIKE '%โรงพยาบาลจุฬาลงกรณ์%' OR NAME LIKE '%โรงพยาบาลรามาธิบดี%' OR NAME LIKE '%โรงพยาบาลราชวิถี%' OR NAME LIKE '%โรงพยาบาลพระมงกุฎเกล้า%' OR NAME LIKE '%โรงพยาบาลตำรวจ%' OR NAME LIKE '%โรงพยาบาลเลิดสิน%' OR NAME LIKE '%โรงพยาบาลนพรัตนราชธานี%' OR NAME LIKE '%โรงพยาบาลภูมิพลอดุลยเดช%' OR NAME LIKE '%โรงพยาบาลสมเด็จพระปิ่นเกล้า%' OR NAME LIKE '%โรงพยาบาลสงฆ์%' OR NAME LIKE '%โรงพยาบาลทหารผ่านศึก%' OR NAME LIKE '%สถาบันสุขภาพเด็ก%' OR NAME LIKE '%โรงพยาบาลพระมงกุฏเกล้า%' OR NAME LIKE '%โรงพยาบาลสมเด็จพระปิ่นเกล้า%') AND NOT (NAME LIKE '%สัตว์%' OR NAME LIKE '%สัตว์เลี้ยง%')",
         "filter": lambda name: any(w in name for w in ["โรงพยาบาลศิริราช", "โรงพยาบาลจุฬาลงกรณ์", "โรงพยาบาลรามาธิบดี", "โรงพยาบาลราชวิถี", "โรงพยาบาลพระมงกุฎเกล้า", "โรงพยาบาลตำรวจ", "โรงพยาบาลเลิดสิน", "โรงพยาบาลนพรัตนราชธานี", "โรงพยาบาลภูมิพลอดุลยเดช", "โรงพยาบาลสมเด็จพระปิ่นเกล้า", "โรงพยาบาลสงฆ์", "โรงพยาบาลทหารผ่านศึก", "สถาบันสุขภาพเด็ก", "โรงพยาบาลพระมงกุฏเกล้า", "โรงพยาบาลสมเด็จพระปิ่นเกล้า"]) and not any(w in name for w in ["สัตว์", "สัตว์เลี้ยง"])
     },
+    "private_hospitals": {
+        "name": "โรงพยาบาลเอกชน",
+        "where": "NAME LIKE '%โรงพยาบาล%' AND NOT (NAME LIKE '%สัตว์%' OR NAME LIKE '%สัตว์เลี้ยง%' OR NAME LIKE '%กลาง%' OR NAME LIKE '%ตากสิน%' OR NAME LIKE '%เจริญกรุง%' OR NAME LIKE '%หลวงพ่อทวีศักดิ์%' OR NAME LIKE '%เวชการุณย์%' OR NAME LIKE '%ลาดกระบัง%' OR NAME LIKE '%ราชพิพัฒน์%' OR NAME LIKE '%สิรินธร%' OR NAME LIKE '%ผู้สูงอายุบางขุนเทียน%' OR NAME LIKE '%คลองสามวา%' OR NAME LIKE '%บางนากรุงเทพมหานคร%' OR NAME LIKE '%วชิรพยาบาล%' OR NAME LIKE '%ศิริราช%' OR NAME LIKE '%จุฬาลงกรณ์%' OR NAME LIKE '%รามาธิบดี%' OR NAME LIKE '%ราชวิถี%' OR NAME LIKE '%พระมงกุฎเกล้า%' OR NAME LIKE '%ตำรวจ%' OR NAME LIKE '%เลิดสิน%' OR NAME LIKE '%นพรัตนราชธานี%' OR NAME LIKE '%ภูมิพลอดุลยเดช%' OR NAME LIKE '%สมเด็จพระปิ่นเกล้า%' OR NAME LIKE '%สงฆ์%' OR NAME LIKE '%ทหารผ่านศึก%' OR NAME LIKE '%สถาบันสุขภาพเด็ก%')",
+        "filter": lambda name: "โรงพยาบาล" in name and not any(w in name for w in ["สัตว์", "สัตว์เลี้ยง", "กลาง", "ตากสิน", "เจริญกรุง", "หลวงพ่อทวีศักดิ์", "เวชการุณย์", "ลาดกระบัง", "ราชพิพัฒน์", "สิรินธร", "ผู้สูงอายุบางขุนเทียน", "คลองสามวา", "บางนากรุงเทพมหานคร", "วชิรพยาบาล", "ศิริราช", "จุฬาลงกรณ์", "รามาธิบดี", "ราชวิถี", "พระมงกุฎเกล้า", "ตำรวจ", "เลิดสิน", "นพรัตนราชธานี", "ภูมิพลอดุลยเดช", "สมเด็จพระปิ่นเกล้า", "สงฆ์", "ทหารผ่านศึก", "สถาบันสุขภาพเด็ก"])
+    },
     "health_centers": {
         "name": "ศูนย์บริการสาธารณสุข (ศบส.)",
         "where": "NAME LIKE '%ศูนย์บริการสาธารณสุข%'",
         "filter": lambda name: "ศูนย์บริการสาธารณสุข" in name
     },
-    "schools": {
-        "name": "โรงเรียนและสถานศึกษา",
+    "schools_bkk": {
+        "name": "โรงเรียนสังกัด กทม.",
         "where": "(NAME LIKE '%โรงเรียน%') AND NOT (NAME LIKE '%สอนขับ%' OR NAME LIKE '%มวย%' OR NAME LIKE '%กวดวิชา%' OR NAME LIKE '%สอนภาษา%' OR NAME LIKE '%เสริมสวย%')",
-        "filter": lambda name: "โรงเรียน" in name and not any(w in name for w in ["สอนขับ", "มวย", "กวดวิชา", "สอนภาษา", "เสริมสวย"])
+        "filter": lambda name: "โรงเรียน" in name and not any(w in name for w in ["สอนขับ", "มวย", "กวดวิชา", "สอนภาษา", "เสริมสวย"]) and classify_school(name) == "รร.สังกัด กทม."
     },
-    "public_transit": {
-        "name": "ระบบขนส่งสาธารณะ",
-        "where": "NAME LIKE '%สถานีรถไฟฟ้า%' OR NAME LIKE '%สถานี BTS%' OR NAME LIKE '%สถานี MRT%' OR NAME LIKE '%สถานีรถไฟลอยฟ้า%' OR NAME LIKE '%ท่าเรือ%' OR NAME LIKE '%ท่าเทียบเรือ%'",
-        "filter": lambda name: any(w in name for w in ["สถานีรถไฟฟ้า", "สถานี BTS", "สถานี MRT", "สถานีรถไฟลอยฟ้า", "ท่าเรือ", "ท่าเทียบเรือ"])
+    "schools_obec": {
+        "name": "โรงเรียนสังกัด สพฐ. (รัฐบาล)",
+        "where": "(NAME LIKE '%โรงเรียน%') AND NOT (NAME LIKE '%สอนขับ%' OR NAME LIKE '%มวย%' OR NAME LIKE '%กวดวิชา%' OR NAME LIKE '%สอนภาษา%' OR NAME LIKE '%เสริมสวย%')",
+        "filter": lambda name: "โรงเรียน" in name and not any(w in name for w in ["สอนขับ", "มวย", "กวดวิชา", "สอนภาษา", "เสริมสวย"]) and classify_school(name) == "รร.สังกัด สพฐ. (รัฐบาล)"
+    },
+    "schools_private": {
+        "name": "โรงเรียนเอกชน",
+        "where": "(NAME LIKE '%โรงเรียน%') AND NOT (NAME LIKE '%สอนขับ%' OR NAME LIKE '%มวย%' OR NAME LIKE '%กวดวิชา%' OR NAME LIKE '%สอนภาษา%' OR NAME LIKE '%เสริมสวย%')",
+        "filter": lambda name: "โรงเรียน" in name and not any(w in name for w in ["สอนขับ", "มวย", "กวดวิชา", "สอนภาษา", "เสริมสวย"]) and classify_school(name) == "รร.เอกชน"
+    },
+    "transit_train": {
+        "name": "รถไฟฟ้า (BTS/MRT)",
+        "where": "NAME LIKE '%สถานีรถไฟฟ้า%' OR NAME LIKE '%สถานี BTS%' OR NAME LIKE '%สถานี MRT%' OR NAME LIKE '%สถานีรถไฟลอยฟ้า%'",
+        "filter": lambda name: any(w in name for w in ["สถานีรถไฟฟ้า", "สถานี BTS", "สถานี MRT", "สถานีรถไฟลอยฟ้า"])
+    },
+    "transit_boat": {
+        "name": "เรือโดยสาร",
+        "where": "NAME LIKE '%ท่าเรือ%' OR NAME LIKE '%ท่าเทียบเรือ%'",
+        "filter": lambda name: any(w in name for w in ["ท่าเรือ", "ท่าเทียบเรือ"])
+    },
+    "transit_bus": {
+        "name": "ป้ายรถประจำทาง",
+        "where": "1=0",
+        "filter": lambda name: False
     }
 }
 
@@ -162,34 +187,44 @@ def main():
         
         # Load POIs
         pois = None
-        try:
-            print("Fetching POIs from MapServer...")
-            params = {
-                "f": "geojson",
-                "where": cat_config["where"],
-                "outFields": "OBJECTID,NAME,NAME_ENG,STREET,DISTRICT,SUB_DISTRICT",
-                "returnGeometry": "true",
-                "outSR": "4326"
-            }
-            r = requests.get(mapserver_url, params=params, timeout=20)
-            if r.status_code == 200:
-                pois = r.json()
-        except Exception as e:
-            print(f"MapServer fetch failed ({str(e)}). Falling back to local data...")
+        if cat_key != "transit_bus":
+            try:
+                print("Fetching POIs from MapServer...")
+                params = {
+                    "f": "geojson",
+                    "where": cat_config["where"],
+                    "outFields": "OBJECTID,NAME,NAME_ENG,STREET,DISTRICT,SUB_DISTRICT",
+                    "returnGeometry": "true",
+                    "outSR": "4326"
+                }
+                r = requests.get(mapserver_url, params=params, timeout=20)
+                if r.status_code == 200:
+                    pois = r.json()
+            except Exception as e:
+                print(f"MapServer fetch failed ({str(e)}). Falling back to local data...")
 
-        if not pois or "features" not in pois:
-            with open(POIS_PATH, 'r', encoding='utf-8') as f:
-                local_pois = json.load(f)
-            pois = {
-                "type": "FeatureCollection",
-                "features": [
-                    f for f in local_pois.get("features", [])
-                    if cat_config["filter"](f.get("properties", {}).get("NAME", ""))
-                ]
-            }
+            if not pois or "features" not in pois:
+                with open(POIS_PATH, 'r', encoding='utf-8') as f:
+                    local_pois = json.load(f)
+                pois = {
+                    "type": "FeatureCollection",
+                    "features": [
+                        f for f in local_pois.get("features", [])
+                        if cat_config["filter"](f.get("properties", {}).get("NAME", ""))
+                    ]
+                }
+        else:
+            pois = {"type": "FeatureCollection", "features": []}
 
-        # For public transit, load bus stops from the pre-downloaded local GeoJSON file
-        if cat_key == "public_transit":
+        # Apply the filter function to all features (including MapServer ones)
+        if cat_key != "transit_bus" and pois and "features" in pois:
+            pois["features"] = [
+                f for f in pois["features"]
+                if cat_config["filter"](f.get("properties", {}).get("NAME", ""))
+            ]
+
+        # For transit_bus, load bus stops from the pre-downloaded local GeoJSON file
+        if cat_key == "transit_bus":
             print("Loading bus stops from local GeoJSON...")
             try:
                 local_bus_stops_path = os.path.join(BASE_DIR, 'data', 'processed', 'accessibility', 'osm-bus-stops.geojson')
@@ -221,31 +256,31 @@ def main():
                 continue
 
             # Category-specific filtering and deduplication
-            if cat_key in ["bkk_hospitals", "gov_hospitals"]:
+            if cat_key in ["bkk_hospitals", "gov_hospitals", "private_hospitals"]:
                 base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].split(" ตึก ")[0].split(" อาคาร ")[0].strip()
                 if base_name in seen_names:
                     continue
                 seen_names.add(base_name)
 
-            elif cat_key == "public_transit":
-                if "สถานี" in name or "BTS" in name or "MRT" in name:
-                    base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].split(" Gate ")[0].strip()
-                    if base_name in seen_names:
-                        continue
-                    seen_names.add(base_name)
-                elif "ท่าเรือ" in name or "ท่าเทียบเรือ" in name:
-                    # Filter: passenger, express, ferry, major river/canal piers
-                    is_valid_pier = any(w in name for w in ["โดยสาร", "ด่วน", "ข้ามฟาก", "คลองแสนแสบ", "คลองผดุง", "ท่าเรือข้ามฟาก", "เจ้าพระยา"]) or (
-                        ("ท่าเรือ" in name or "ท่าเทียบเรือ" in name) and not any(w in name for w in ["ส่วนบุคคล", "ร้าง", "สินค้า", "บริษัท", "เอกชน", "ห้างหุ้นส่วน"])
-                    )
-                    if not is_valid_pier:
-                        continue
-                    base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].strip()
-                    if base_name in seen_names:
-                        continue
-                    seen_names.add(base_name)
+            elif cat_key == "transit_train":
+                base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].split(" Gate ")[0].strip()
+                if base_name in seen_names:
+                    continue
+                seen_names.add(base_name)
 
-            elif cat_key == "schools":
+            elif cat_key == "transit_boat":
+                # Filter: passenger, express, ferry, major river/canal piers
+                is_valid_pier = any(w in name for w in ["โดยสาร", "ด่วน", "ข้ามฟาก", "คลองแสนแสบ", "คลองผดุง", "ท่าเรือข้ามฟาก", "เจ้าพระยา"]) or (
+                    ("ท่าเรือ" in name or "ท่าเทียบเรือ" in name) and not any(w in name for w in ["ส่วนบุคคล", "ร้าง", "สินค้า", "บริษัท", "เอกชน", "ห้างหุ้นส่วน"])
+                )
+                if not is_valid_pier:
+                    continue
+                base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].strip()
+                if base_name in seen_names:
+                    continue
+                seen_names.add(base_name)
+
+            elif cat_key in ["schools_bkk", "schools_obec", "schools_private"]:
                 base_name = name.split(" ประตู ")[0].split(" ทางเข้า ")[0].split(" (")[0].strip()
                 if base_name in seen_names:
                     continue
@@ -272,8 +307,12 @@ def main():
                 }
                 
                 # Classify school type for the frontend
-                if cat_key == "schools":
-                    properties["school_type"] = classify_school(name)
+                if cat_key == "schools_bkk":
+                    properties["school_type"] = "รร.สังกัด กทม."
+                elif cat_key == "schools_obec":
+                    properties["school_type"] = "รร.สังกัด สพฐ. (รัฐบาล)"
+                elif cat_key == "schools_private":
+                    properties["school_type"] = "รร.เอกชน"
                     
                 snapped_features.append({
                     "type": "Feature",
