@@ -230,7 +230,7 @@ function App() {
   // Fetch initial data directly from static assets
   useEffect(() => {
     // Fetch precomputed stats
-    fetch('/api/accessibility/stats?t=' + Date.now())
+    fetch('/data/processed/accessibility/stats.json?t=' + Date.now())
       .then((r) => r.json())
       .then(setDashboardStats)
       .catch((e) => console.error('Failed to load accessibility stats:', e));
@@ -261,7 +261,7 @@ function App() {
 
     setLoadingLayers((prev) => ({ ...prev, [key]: true }));
     try {
-      const response = await fetch(`/api/accessibility/layer/${category}/${type}?t=${Date.now()}`);
+      const response = await fetch(`/data/processed/accessibility/${category}-${type}.geojson?t=${Date.now()}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       setLoadedAccessibilityData((prev) => ({
