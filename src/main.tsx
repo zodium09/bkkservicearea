@@ -13,7 +13,6 @@ import {
   Search,
   Sun,
   MapPin,
-  Sliders,
   Download,
   Database,
 } from 'lucide-react';
@@ -23,6 +22,11 @@ import {
   AccessibilityConfig,
   DistrictLeaderboardItem,
 } from './types';
+import { getEngineStatus, analyzeServiceArea } from './services/api';
+import { AnalyzePanel } from './components/AnalyzePanel';
+import { LayerControl } from './components/LayerControl';
+import { ResultSummary } from './components/ResultSummary';
+import type { CostType, TravelMode } from './types/gis';
 
 const BANGKOK_CENTER: L.LatLngExpression = [13.7563, 100.5018];
 const BASEMAPS = {
@@ -233,6 +237,17 @@ function App() {
   // Dynamic analysis states
   const [inspectCoords, setInspectCoords] = useState<L.LatLng | null>(null);
   const [analyzeDistance, setAnalyzeDistance] = useState<number>(1000);
+  const [analysisMode, setAnalysisMode] = useState<TravelMode>('walk');
+  const [analysisCostType, setAnalysisCostType] = useState<CostType>('time');
+  const [analysisLimit, setAnalysisLimit] = useState<number>(900);
+  const [analysisLayers, setAnalysisLayers] = useState<Record<string, boolean>>({
+    serviceArea: true,
+    reachableRoads: true,
+    startPoint: true,
+    snappedNode: true,
+    barriers: false,
+    onewayRoads: false,
+  });
   const [analyzeResults, setAnalyzeResults] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -274,8 +289,7 @@ function App() {
 
 
     // Fetch engine health status
-    fetch('/api/engine/status')
-      .then((r) => r.json())
+    getEngineStatus()
       .then(setEngineStatus)
       .catch((e) => console.error('Failed to load engine status:', e));
   }, []);
@@ -632,7 +646,7 @@ function App() {
     layersRef.current.dynamicReachableRoads = null;
 
     if (activeTab === 'analyze' && analyzeResults) {
-      if (analyzeResults.serviceArea && analyzeResults.serviceArea.features?.length) {
+      if (analysisLayers.serviceArea && analyzeResults.serviceArea?.type === 'FeatureCollection' && analyzeResults.serviceArea.features?.length) {
         layersRef.current.dynamicServiceArea = L.geoJSON(analyzeResults.serviceArea, {
           pane: 'analysisArea',
           style: {
@@ -645,7 +659,7 @@ function App() {
         }).addTo(map);
       }
 
-      if (analyzeResults.reachableRoads && analyzeResults.reachableRoads.features?.length) {
+      if (analysisLayers.reachableRoads && analyzeResults.reachableRoads?.type === 'FeatureCollection' && analyzeResults.reachableRoads.features?.length) {
         layersRef.current.dynamicReachableRoads = L.geoJSON(analyzeResults.reachableRoads, {
           pane: 'analysisArea',
           style: {
@@ -657,7 +671,7 @@ function App() {
         }).addTo(map);
       }
     }
-  }, [analyzeResults, activeTab]);
+  }, [analyzeResults, activeTab, analysisLayers]);
 
   const handleAnalyze = async () => {
     if (!inspectCoords) return;
@@ -666,32 +680,22 @@ function App() {
     setAnalyzeResults(null);
 
     try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          facilities: [
-            {
-              lat: inspectCoords.lat,
-              lng: inspectCoords.lng,
-              name: 'จุดวิเคราะห์หลัก',
-              type: 'inspect'
-            }
-          ],
-          distanceMeters: analyzeDistance
-        })
+      const data = await analyzeServiceArea({
+        facilities: [
+          {
+            lat: inspectCoords.lat,
+            lng: inspectCoords.lng,
+            name: 'จุดวิเคราะห์หลัก',
+            type: 'inspect'
+          }
+        ],
+        mode: analysisMode,
+        costType: analysisCostType,
+        limit: analysisCostType === 'time' ? analysisLimit : analyzeDistance
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `HTTP error ${response.status}`);
-      }
-
-      const data = await response.json();
       setAnalyzeResults(data);
-      setMessage(`วิเคราะห์ระยะทาง ${analyzeDistance} ม. สำเร็จ (Engine: ${data.engine})`);
+      const label = analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance} ม.`;
+      setMessage(`วิเคราะห์ ${label} สำเร็จ (Mode: ${analysisMode}, Engine: ${data.engine}${data.cacheHit ? ', cache' : ''})`);
     } catch (e: any) {
       console.error('Analysis failed:', e);
       setAnalyzeError(e.message || 'การวิเคราะห์ล้มเหลว');
@@ -706,7 +710,8 @@ function App() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(analyzeResults.serviceArea));
     const downloadAnchor = document.createElement('a');
     downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `service-area-${analyzeDistance}m.geojson`);
+    const suffix = analysisCostType === 'time' ? `${analysisMode}-${analysisLimit}s` : `${analysisMode}-${analyzeDistance}m`;
+    downloadAnchor.setAttribute("download", `service-area-${suffix}.geojson`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
@@ -1096,68 +1101,35 @@ function App() {
               </div>
 
               <div className="section-header" style={{ marginTop: '18px' }}>
-                <h2>2. ตั้งค่าระยะทางบนเครือข่ายถนน</h2>
+                <h2>2. ตั้งค่า Network Analysis</h2>
               </div>
               <div style={{ marginTop: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
-                  <span>ระยะวิเคราะห์</span>
-                  <span style={{ color: '#0f766e' }}>{analyzeDistance.toLocaleString()} เมตร</span>
-                </div>
-                <input
-                  type="range"
-                  min="300"
-                  max="5000"
-                  step="100"
-                  value={analyzeDistance}
-                  onChange={(e) => setAnalyzeDistance(Number(e.target.value))}
-                  style={{ width: '100%', cursor: 'pointer', accentColor: '#0f766e' }}
+                <AnalyzePanel
+                  mode={analysisMode}
+                  costType={analysisCostType}
+                  limit={analysisCostType === 'time' ? analysisLimit : analyzeDistance}
+                  disabled={!inspectCoords}
+                  loading={isAnalyzing}
+                  onModeChange={setAnalysisMode}
+                  onCostTypeChange={setAnalysisCostType}
+                  onLimitChange={(value) => {
+                    if (analysisCostType === 'time') setAnalysisLimit(value);
+                    else setAnalyzeDistance(value);
+                  }}
+                  onAnalyze={handleAnalyze}
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#64748b', marginTop: '2px' }}>
-                  <span>300 ม.</span>
-                  <span>5,000 ม. (5 กม.)</span>
-                </div>
               </div>
-
-              <button
-                onClick={handleAnalyze}
-                disabled={isAnalyzing || !inspectCoords}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: isAnalyzing || !inspectCoords ? '#64748b' : '#0f766e',
-                  color: 'white',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  cursor: isAnalyzing || !inspectCoords ? 'not-allowed' : 'pointer',
-                  marginTop: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 6px rgba(15,118,110,0.2)',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {isAnalyzing ? (
-                  <>
-                    <Loader2 className="spin" size={18} />
-                    <span>กำลังประมวลผล pgRouting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sliders size={18} />
-                    <span>วิเคราะห์พื้นที่บริการ (Analyze)</span>
-                  </>
-                )}
-              </button>
 
               {analyzeError && (
                 <div style={{ marginTop: '12px', padding: '10px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', color: '#ef4444', fontSize: '0.78rem' }}>
                   <strong>เกิดข้อผิดพลาด:</strong> {analyzeError}
                 </div>
               )}
+
+              <div className="section-header" style={{ marginTop: '18px' }}>
+                <h2>3. ชั้นข้อมูลผลวิเคราะห์</h2>
+              </div>
+              <LayerControl layers={analysisLayers} onChange={setAnalysisLayers} />
             </section>
 
             {/* RESULTS */}
@@ -1166,12 +1138,16 @@ function App() {
                 <div className="result-head" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px', marginBottom: '12px' }}>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ผลลัพธ์การวิเคราะห์พื้นที่เข้าถึง</span>
-                    <h2 style={{ fontSize: '1rem', fontWeight: 700, marginTop: '2px' }}>📍 ขอบเขตระยะ {analyzeDistance} เมตร</h2>
+                    <h2 style={{ fontSize: '1rem', fontWeight: 700, marginTop: '2px' }}>
+                      📍 ขอบเขต {analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance} เมตร`}
+                    </h2>
                   </div>
                   <strong style={{ background: '#7c3aed22', color: '#a78bfa', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>
-                    {analyzeResults.engine === 'postgis-pgrouting' ? 'pgRouting' : 'JS Fallback'}
+                    {analyzeResults.cacheHit ? 'Cache' : analyzeResults.engine === 'postgis-pgrouting' ? 'pgRouting' : 'JS Fallback'}
                   </strong>
                 </div>
+
+                <ResultSummary result={analyzeResults} />
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
                   <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>

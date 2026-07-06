@@ -9,8 +9,10 @@
     "server": "node server.js",
     "prepare:data": "node scripts/prepare-bma-layers.js",
     "build": "vite build",
-    "test": "node --test",
-    "test:api": "node test/analyze.test.js",
+    "test": "node --test test/api/*.test.js",
+    "test:api": "node --test test/api/*.test.js",
+    "db:migrate": "node scripts/migrate-db.js",
+    "import:osm-network": "node scripts/import-osm-network.js",
     "db:topology": "node scripts/build-topology.js",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "start": "node server.js"

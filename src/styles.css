@@ -2214,4 +2214,67 @@ h2 {
   display: block;
 }
 
+.chip {
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.22);
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.chip.active {
+  background: #0f766e;
+  border-color: #14b8a6;
+  color: white;
+}
+
+.primary-action {
+  width: 100%;
+  min-height: 44px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 0;
+  background: #0f766e;
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 6px rgba(15, 118, 110, 0.2);
+}
+
+.primary-action:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: inherit;
+}
+
+.result-summary {
+  margin-bottom: 14px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(20, 184, 166, 0.24);
+  background: rgba(20, 184, 166, 0.08);
+  color: #94a3b8;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
 
