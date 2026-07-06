@@ -157,6 +157,40 @@ function buildNetworkServiceArea(graph, distances, request) {
   };
 }
 
+function buildApproximateServiceArea(request, reason) {
+  const facility = request.facilities[0];
+  const radiusKm = Math.max(request.distanceMeters / 1000, 0.1);
+  const point = turf.point([facility.lng, facility.lat], {
+    id: facility.id,
+    name: facility.name,
+    type: facility.type,
+  });
+  const serviceFeature = turf.circle(point, radiusKm, {
+    steps: 96,
+    units: 'kilometers',
+    properties: {
+      method: 'straight-line-fallback',
+      reason,
+      mode: request.mode,
+      costType: request.costType,
+      limit: request.limit,
+      radiusMeters: Number((radiusKm * 1000).toFixed(2)),
+    },
+  });
+  const areaSqKm = turf.area(serviceFeature) / 1000000;
+  serviceFeature.properties.areaSqKm = Number(areaSqKm.toFixed(3));
+
+  const snap = { nodeKey: 'manual-point', coord: [facility.lng, facility.lat], distanceMeters: 0 };
+  return {
+    snappedFacilities: [{ ...facility, snap }],
+    networkNodes: turf.featureCollection([point]),
+    reachableRoads: turf.featureCollection([]),
+    serviceArea: turf.featureCollection([serviceFeature]),
+    areaSqKm,
+    reachedRoadLengthKm: 0,
+  };
+}
+
 async function intersectingDistricts(serviceArea) {
   if (!serviceArea?.features?.length) return [];
   try {
@@ -198,7 +232,52 @@ function pointCollections(facilities, snappedFacilities) {
 }
 
 async function analyzeFallback(request) {
-  const roads = await network.loadRoadsForFacilities(request.facilities, request.distanceMeters);
+  let roads;
+  let approximateReason = null;
+  const canUseLiveArcgisRoads = process.env.ENABLE_ARCGIS_ROAD_FALLBACK === 'true';
+  const canUseLargeLocalRoads = process.env.ENABLE_LARGE_LOCAL_ROADS === 'true';
+  const roadLayerMaxBytes = Number(process.env.FALLBACK_ROAD_LAYER_MAX_BYTES) || 25 * 1024 * 1024;
+  const hasUsableLocalRoads = canUseLargeLocalRoads || network.isProcessedLayerSmallEnough(network.ROAD_LAYER_ID, roadLayerMaxBytes);
+  if (!hasUsableLocalRoads && !canUseLiveArcgisRoads) {
+    approximateReason = network.hasProcessedLayer(network.ROAD_LAYER_ID)
+      ? 'Local road layer is too large for interactive fallback. Enable large local roads or use PostGIS/pgRouting for network analysis.'
+      : 'Local road layer is not available and live ArcGIS road fallback is disabled.';
+  }
+  try {
+    if (!approximateReason) {
+      roads = await Promise.race([
+        network.loadRoadsForFacilities(request.facilities, request.distanceMeters),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Road network fallback timed out.')), Number(process.env.FALLBACK_ROAD_TIMEOUT_MS) || 12000).unref?.();
+        }),
+      ]);
+    }
+  } catch (error) {
+    approximateReason = error.message || 'Road network fallback failed.';
+  }
+  if (approximateReason || !roads?.features?.length) {
+    const networkArea = buildApproximateServiceArea(request, approximateReason || 'No road features were available near the selected point.');
+    const districts = await intersectingDistricts(networkArea.serviceArea);
+    const points = pointCollections(request.facilities, networkArea.snappedFacilities);
+    const qgis = { found: false, command: null, version: null, skipped: true };
+    return formatResponse({
+      engine: 'straight-line-fallback',
+      request,
+      qgis,
+      points,
+      snappedFacilities: networkArea.snappedFacilities,
+      networkNodes: networkArea.networkNodes,
+      reachableRoads: networkArea.reachableRoads,
+      serviceArea: networkArea.serviceArea,
+      intersectingDistricts: districts,
+      areaSqKm: networkArea.areaSqKm,
+      reachedRoadLengthKm: networkArea.reachedRoadLengthKm,
+      roadFeaturesLoaded: roads?.features?.length || 0,
+      networkNodesReached: networkArea.networkNodes.features.length,
+      fallbackReason: networkArea.serviceArea.features[0].properties.reason,
+      analysisQuality: 'approximate',
+    });
+  }
   const graph = buildRoadGraph(roads, request);
   const snappedFacilities = [];
   const sourceKeys = [];
@@ -234,6 +313,7 @@ async function analyzeFallback(request) {
     reachedRoadLengthKm: networkArea.reachedRoadLengthKm,
     roadFeaturesLoaded: roads.features.length,
     networkNodesReached: distances.size,
+    analysisQuality: 'network',
   });
 }
 
@@ -252,6 +332,8 @@ function formatResponse(context) {
     reachedRoadLengthKm,
     roadFeaturesLoaded,
     networkNodesReached,
+    fallbackReason,
+    analysisQuality = 'network',
   } = context;
   const averageSnapDistanceMeters = Number((
     snappedFacilities.reduce((sum, facility) => sum + facility.snap.distanceMeters, 0) / Math.max(snappedFacilities.length, 1)
@@ -269,6 +351,8 @@ function formatResponse(context) {
   return {
     engine,
     analysisType: 'road-network',
+    analysisQuality,
+    fallbackReason,
     qgis,
     cacheHit: false,
     stats,

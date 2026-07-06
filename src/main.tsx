@@ -260,6 +260,7 @@ function App() {
     pois: Record<string, L.GeoJSON>;
     busRoutes: L.GeoJSON | null;
     dynamicMarker: L.Marker | null;
+    dynamicSnappedNode: L.GeoJSON | null;
     dynamicServiceArea: L.GeoJSON | null;
     dynamicReachableRoads: L.GeoJSON | null;
   }>({
@@ -269,6 +270,7 @@ function App() {
     pois: {},
     busRoutes: null,
     dynamicMarker: null,
+    dynamicSnappedNode: null,
     dynamicServiceArea: null,
     dynamicReachableRoads: null,
   });
@@ -604,6 +606,8 @@ function App() {
         layersRef.current.dynamicServiceArea = null;
         layersRef.current.dynamicReachableRoads?.remove();
         layersRef.current.dynamicReachableRoads = null;
+        layersRef.current.dynamicSnappedNode?.remove();
+        layersRef.current.dynamicSnappedNode = null;
       }
     }
   }, [activeTab]);
@@ -644,8 +648,11 @@ function App() {
     layersRef.current.dynamicServiceArea = null;
     layersRef.current.dynamicReachableRoads?.remove();
     layersRef.current.dynamicReachableRoads = null;
+    layersRef.current.dynamicSnappedNode?.remove();
+    layersRef.current.dynamicSnappedNode = null;
 
     if (activeTab === 'analyze' && analyzeResults) {
+      const drawnBounds: L.LatLngBounds[] = [];
       if (analysisLayers.serviceArea && analyzeResults.serviceArea?.type === 'FeatureCollection' && analyzeResults.serviceArea.features?.length) {
         layersRef.current.dynamicServiceArea = L.geoJSON(analyzeResults.serviceArea, {
           pane: 'analysisArea',
@@ -657,6 +664,7 @@ function App() {
             fillOpacity: 0.25,
           }
         }).addTo(map);
+        drawnBounds.push(layersRef.current.dynamicServiceArea.getBounds());
       }
 
       if (analysisLayers.reachableRoads && analyzeResults.reachableRoads?.type === 'FeatureCollection' && analyzeResults.reachableRoads.features?.length) {
@@ -669,6 +677,27 @@ function App() {
             dashArray: '4, 6'
           }
         }).addTo(map);
+        drawnBounds.push(layersRef.current.dynamicReachableRoads.getBounds());
+      }
+
+      if (analysisLayers.snappedNode && analyzeResults.snappedFacilities?.type === 'FeatureCollection' && analyzeResults.snappedFacilities.features?.length) {
+        layersRef.current.dynamicSnappedNode = L.geoJSON(analyzeResults.snappedFacilities, {
+          pane: 'servicePoints',
+          pointToLayer: (_feature, latlng) => L.circleMarker(latlng, {
+            pane: 'servicePoints',
+            radius: 6,
+            fillColor: '#f59e0b',
+            color: '#ffffff',
+            weight: 2,
+            fillOpacity: 0.95,
+          }),
+        }).addTo(map);
+      }
+
+      const validBounds = drawnBounds.filter((bounds) => bounds.isValid());
+      if (validBounds.length) {
+        const combined = validBounds.reduce((bounds, next) => bounds.extend(next), validBounds[0]);
+        map.fitBounds(combined, { padding: [36, 36], maxZoom: 15 });
       }
     }
   }, [analyzeResults, activeTab, analysisLayers]);

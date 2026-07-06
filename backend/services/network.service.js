@@ -10,6 +10,7 @@ const ROAD_LAYER_ID = 7;
 const PROCESSED_LAYERS_DIR = path.join(ROOT, 'data', 'processed', 'bma-layers');
 const PROCESSED_CATALOG_PATH = path.join(PROCESSED_LAYERS_DIR, 'catalog.json');
 const processedLayerCache = new Map();
+let qgisProcessCache = null;
 
 const LAYER_DIMENSIONS = {
   0: 'จุดอ้างอิงเมือง',
@@ -66,6 +67,16 @@ function processedLayerPath(layerId) {
     : path.join(PROCESSED_LAYERS_DIR, `layer-${layerId}.geojson`);
 }
 
+function hasProcessedLayer(layerId) {
+  return fs.existsSync(processedLayerPath(layerId));
+}
+
+function isProcessedLayerSmallEnough(layerId, maxBytes) {
+  const layerPath = processedLayerPath(layerId);
+  if (!fs.existsSync(layerPath)) return false;
+  return fs.statSync(layerPath).size <= maxBytes;
+}
+
 function loadProcessedLayer(layerId) {
   const layerPath = processedLayerPath(layerId);
   if (!fs.existsSync(layerPath)) return null;
@@ -103,9 +114,20 @@ function queryProcessedLayerByBbox(layerId, bbox, maxFeatures = 50000) {
   return turf.featureCollection(features);
 }
 
-async function fetchArcgis(pathAndQuery) {
+function timeoutSignal(timeoutMs) {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return AbortSignal.timeout(timeoutMs);
+  }
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), timeoutMs).unref?.();
+  return controller.signal;
+}
+
+async function fetchArcgis(pathAndQuery, options = {}) {
   const upstream = `${ARCGIS_ORIGIN}${pathAndQuery}`;
+  const timeoutMs = Number(options.timeoutMs) || Number(process.env.ARCGIS_TIMEOUT_MS) || 12000;
   const response = await fetch(upstream, {
+    signal: timeoutSignal(timeoutMs),
     headers: {
       'user-agent': 'Bangkok-Service-Area-Analysis/1.0',
       accept: 'application/json, image/*, */*',
@@ -125,16 +147,23 @@ function run(command, args = [], options = {}) {
     const isBatch = /\.(bat|cmd)$/i.test(command);
     const executable = isBatch ? process.env.ComSpec || 'cmd.exe' : command;
     const executableArgs = isBatch ? ['/c', command, ...args] : args;
-    execFile(executable, executableArgs, { timeout: 15000, windowsHide: true, ...options }, (error, stdout, stderr) => {
+    execFile(executable, executableArgs, { timeout: Number(process.env.QGIS_PROBE_TIMEOUT_MS) || 2500, windowsHide: true, ...options }, (error, stdout, stderr) => {
       resolve({ ok: !error, error, stdout, stderr });
     });
   });
 }
 
 async function findQgisProcess() {
+  if (qgisProcessCache && Date.now() - qgisProcessCache.checkedAt < 5 * 60 * 1000) {
+    return qgisProcessCache.result;
+  }
+  const remember = (result) => {
+    qgisProcessCache = { checkedAt: Date.now(), result };
+    return result;
+  };
   if (process.env.QGIS_PROCESS) {
     const probe = await run(process.env.QGIS_PROCESS, ['--version']);
-    return { found: probe.ok, command: process.env.QGIS_PROCESS, version: probe.stdout.trim() || probe.stderr.trim() };
+    return remember({ found: probe.ok, command: process.env.QGIS_PROCESS, version: probe.stdout.trim() || probe.stderr.trim() });
   }
   const probe = await run('where.exe', ['qgis_process']);
   const command = probe.stdout.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
@@ -148,9 +177,9 @@ async function findQgisProcess() {
   );
   for (const candidate of candidates) {
     const version = await run(candidate, ['--version']);
-    if (version.ok) return { found: true, command: candidate, version: version.stdout.trim() || version.stderr.trim() };
+    if (version.ok) return remember({ found: true, command: candidate, version: version.stdout.trim() || version.stderr.trim() });
   }
-  return { found: false, command: null, version: null };
+  return remember({ found: false, command: null, version: null });
 }
 
 async function loadDistricts() {
@@ -169,15 +198,18 @@ async function loadDistricts() {
 }
 
 async function loadRoadsForFacility(facility, distanceMeters) {
-  const searchKm = Math.min(Math.max(distanceMeters / 1000 + 0.8, 1.2), 12);
+  const searchKm = Math.min(Math.max(distanceMeters / 1000 + 0.25, 0.8), 3.5);
   const searchArea = turf.buffer(turf.point([facility.lng, facility.lat]), searchKm, { units: 'kilometers' });
   const [xmin, ymin, xmax, ymax] = turf.bbox(searchArea);
-  const processed = queryProcessedLayerByBbox(ROAD_LAYER_ID, [xmin, ymin, xmax, ymax], 50000);
+  const maxFeatures = Number(process.env.FALLBACK_ROAD_MAX_FEATURES) || 2500;
+  const processed = queryProcessedLayerByBbox(ROAD_LAYER_ID, [xmin, ymin, xmax, ymax], maxFeatures);
   if (processed) return processed;
 
   const features = [];
-  const pageSize = 2000;
-  for (let offset = 0; offset < 10000; offset += pageSize) {
+  const pageSize = Number(process.env.ARCGIS_ROAD_PAGE_SIZE) || 750;
+  const maxPages = Number(process.env.ARCGIS_ROAD_MAX_PAGES) || 3;
+  for (let pageIndex = 0; pageIndex < maxPages && features.length < maxFeatures; pageIndex += 1) {
+    const offset = pageIndex * pageSize;
     const params = new URLSearchParams({
       f: 'geojson',
       where: '1=1',
@@ -192,10 +224,16 @@ async function loadRoadsForFacility(facility, distanceMeters) {
       resultRecordCount: String(pageSize),
       orderByFields: 'OBJECTID',
     });
-    const upstream = await fetchArcgis(`${BASEMAP_PATH}/${ROAD_LAYER_ID}/query?${params.toString()}`);
+    let upstream;
+    try {
+      upstream = await fetchArcgis(`${BASEMAP_PATH}/${ROAD_LAYER_ID}/query?${params.toString()}`, { timeoutMs: Number(process.env.ARCGIS_ROAD_TIMEOUT_MS) || 9000 });
+    } catch (error) {
+      if (features.length) break;
+      throw error;
+    }
     if (!upstream.ok) break;
     const page = JSON.parse(upstream.body.toString('utf8'));
-    features.push(...(page.features || []));
+    features.push(...(page.features || []).slice(0, maxFeatures - features.length));
     if (!page.exceededTransferLimit && (page.features || []).length < pageSize) break;
   }
   return turf.featureCollection(features);
@@ -224,6 +262,8 @@ module.exports = {
   buildCatalogFromMetadata,
   readProcessedCatalog,
   processedLayerPath,
+  hasProcessedLayer,
+  isProcessedLayerSmallEnough,
   loadProcessedLayer,
   queryProcessedLayerByBbox,
   fetchArcgis,

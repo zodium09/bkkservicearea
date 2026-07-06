@@ -21,3 +21,13 @@ The routing network is modeled as pgRouting edges in `roads`.
 - `reachableRoads`: road features used to create the polygon.
 
 Default buffer width is mode-dependent: walk 40 m, bike 65 m, drive 125 m.
+
+## Runtime Fallbacks
+
+When PostGIS/pgRouting is unavailable, `/api/analyze` first tries the local processed road layer only if it is small enough for an interactive request. Large `layer-7.geojson` files are skipped by default because parsing them can block the Node.js event loop.
+
+- `FALLBACK_ROAD_LAYER_MAX_BYTES`: maximum local road GeoJSON size for JS Dijkstra fallback. Default: 25 MB.
+- `ENABLE_LARGE_LOCAL_ROADS=true`: allow JS fallback to parse large local road files.
+- `ENABLE_ARCGIS_ROAD_FALLBACK=true`: allow live ArcGIS road queries when no usable local road layer exists.
+
+If no usable road network is available, the API returns a `straight-line-fallback` response with `analysisQuality: "approximate"` and a valid GeoJSON service area so the custom point workflow still completes.

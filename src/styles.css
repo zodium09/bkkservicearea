@@ -2278,3 +2278,18 @@ h2 {
   line-height: 1.45;
 }
 
+.result-summary span {
+  display: block;
+}
+
+.result-summary.is-approximate {
+  border-color: rgba(245, 158, 11, 0.34);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.analysis-warning {
+  margin-top: 6px;
+  color: #f59e0b;
+  font-weight: 700;
+}
+

@@ -28,9 +28,13 @@ export interface ServiceAreaStats {
 
 export interface AnalyzeResponse {
   engine: string;
+  analysisQuality?: 'network' | 'approximate';
+  fallbackReason?: string;
   cacheHit?: boolean;
   stats?: ServiceAreaStats;
   metrics: Record<string, any>;
+  facilities?: any;
+  snappedFacilities?: any;
   serviceArea: any;
   reachableRoads: any;
   networkNodes?: any;

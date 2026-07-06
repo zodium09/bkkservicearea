@@ -29,15 +29,22 @@ router.post('/analyze', async (req, res) => {
     const result = await routing.analyzeWithPgRouting(db, request);
     return res.json(result);
   } catch (error) {
-    if (error.status) {
-      return res.status(error.status).json({ error: true, code: 'ROUTING_FAILED', message: error.message });
+    if (!error.status) {
+      try {
+        const fallback = await routing.analyzeFallback(request);
+        fallback.pgRoutingError = error.message;
+        return res.json(fallback);
+      } catch (fallbackError) {
+        return res.status(fallbackError.status || 500).json({
+          error: true,
+          code: 'ROUTING_AND_FALLBACK_FAILED',
+          message: 'pgRouting failed and fallback analysis was unavailable.',
+          detail: fallbackError.message,
+          pgRoutingDetail: error.message,
+        });
+      }
     }
-    return res.status(500).json({
-      error: true,
-      code: 'PGROUTING_FAILED',
-      message: 'pgRouting network analysis failed',
-      detail: error.message,
-    });
+    return res.status(error.status).json({ error: true, code: 'ROUTING_FAILED', message: error.message });
   }
 });
 
