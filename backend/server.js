@@ -14,14 +14,30 @@ const allowedOrigins = (process.env.CORS_ORIGINS || 'http://127.0.0.1:5173,http:
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+function isAllowedOrigin(origin) {
+  if (!origin) return false;
+  if (process.env.CORS_ORIGINS === '*' || allowedOrigins.includes(origin)) return true;
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname.endsWith('.vercel.app');
+  } catch {
+    return false;
+  }
+}
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && (allowedOrigins.includes(origin) || process.env.CORS_ORIGINS === '*')) {
+  if (isAllowedOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGINS === '*' ? '*' : origin);
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.headers['access-control-request-private-network'] === 'true') {
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  }
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   return next();
 });

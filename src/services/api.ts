@@ -2,23 +2,39 @@ import type { AnalyzeRequest, AnalyzeResponse } from '../types/gis';
 
 const LOCAL_API_ORIGIN = 'http://127.0.0.1:5174';
 
-function apiUrl(path: string): string {
+function configuredApiBase(): string | null {
   const configuredBase = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '');
-  if (configuredBase) return `${configuredBase}${path}`;
-
-  if (typeof window !== 'undefined' && ['5173', '4173'].includes(window.location.port)) {
-    return `${LOCAL_API_ORIGIN}${path}`;
-  }
-
-  return path;
+  return configuredBase || null;
 }
 
-async function readJson<T>(response: Response): Promise<T> {
+function apiBases(): string[] {
+  const configuredBase = configuredApiBase();
+  if (configuredBase) return [configuredBase];
+  if (typeof window === 'undefined') return [''];
+
+  const isLocalFrontend = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  const isVitePort = ['5173', '4173'].includes(window.location.port);
+  if (isLocalFrontend && isVitePort) {
+    return [LOCAL_API_ORIGIN, ''];
+  }
+
+  if (window.location.hostname.endsWith('.vercel.app')) {
+    return ['', LOCAL_API_ORIGIN];
+  }
+
+  return [''];
+}
+
+function apiUrl(base: string, path: string): string {
+  return `${base}${path}`;
+}
+
+async function readJson<T>(response: Response, url: string): Promise<T> {
   const contentType = response.headers.get('content-type') || '';
   if (!contentType.includes('application/json')) {
     const text = await response.text();
     const preview = text.replace(/\s+/g, ' ').slice(0, 120);
-    throw new Error(`API returned ${contentType || 'non-JSON'} instead of JSON. ${preview}`);
+    throw new Error(`API ${url} returned ${contentType || 'non-JSON'} instead of JSON. ${preview}`);
   }
 
   const data = await response.json();
@@ -28,18 +44,32 @@ async function readJson<T>(response: Response): Promise<T> {
   return data;
 }
 
+async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const errors: string[] = [];
+  for (const base of apiBases()) {
+    const url = apiUrl(base, path);
+    try {
+      const response = await fetch(url, init);
+      return await readJson<T>(response, url);
+    } catch (error: any) {
+      errors.push(error?.message || String(error));
+    }
+  }
+  throw new Error(errors[errors.length - 1] || 'API request failed');
+}
+
 export async function getEngineStatus() {
-  return readJson<any>(await fetch(apiUrl('/api/engine/status')));
+  return requestJson<any>('/api/engine/status');
 }
 
 export async function analyzeServiceArea(request: AnalyzeRequest): Promise<AnalyzeResponse> {
-  return readJson<AnalyzeResponse>(await fetch(apiUrl('/api/analyze'), {
+  return requestJson<AnalyzeResponse>('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
-  }));
+  });
 }
 
 export async function getStaticJson<T>(path: string): Promise<T> {
-  return readJson<T>(await fetch(path));
+  return readJson<T>(await fetch(path), path);
 }

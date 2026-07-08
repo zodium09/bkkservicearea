@@ -52,3 +52,24 @@ test('api responds to local Vite CORS preflight', async () => {
     await close(server);
   }
 });
+
+test('api accepts Vercel preview private-network preflight', async () => {
+  const server = await listen(app);
+  try {
+    const { port } = server.address();
+    const response = await fetch(`http://127.0.0.1:${port}/api/analyze`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://bkkservicearea-demo.vercel.app',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Private-Network': 'true',
+      },
+    });
+
+    assert.equal(response.status, 204);
+    assert.equal(response.headers.get('access-control-allow-origin'), 'https://bkkservicearea-demo.vercel.app');
+    assert.equal(response.headers.get('access-control-allow-private-network'), 'true');
+  } finally {
+    await close(server);
+  }
+});
