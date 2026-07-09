@@ -114,6 +114,60 @@ test('fallback analysis connects roads that geometrically cross without shared v
   }
 });
 
+test('bike fallback can leave a medium disconnected source component', async () => {
+  const originalLoadRoads = network.loadRoadsForFacilities;
+  const originalLoadDistricts = network.loadDistricts;
+  const originalFindQgis = network.findQgisProcess;
+  const originalEnv = {
+    FALLBACK_SOURCE_COMPONENT_MIN_SIZE: process.env.FALLBACK_SOURCE_COMPONENT_MIN_SIZE,
+    FALLBACK_TARGET_COMPONENT_MIN_SIZE: process.env.FALLBACK_TARGET_COMPONENT_MIN_SIZE,
+    FALLBACK_CONNECTED_SNAP_MAX_M: process.env.FALLBACK_CONNECTED_SNAP_MAX_M,
+    FALLBACK_VIRTUAL_CONNECTOR_MAX: process.env.FALLBACK_VIRTUAL_CONNECTOR_MAX,
+  };
+  delete process.env.FALLBACK_SOURCE_COMPONENT_MIN_SIZE;
+  delete process.env.FALLBACK_TARGET_COMPONENT_MIN_SIZE;
+  delete process.env.FALLBACK_CONNECTED_SNAP_MAX_M;
+  delete process.env.FALLBACK_VIRTUAL_CONNECTOR_MAX;
+
+  const localStub = Array.from({ length: 61 }, (_, index) => [100.5000 + index * 0.0001, 13.7500]);
+  const nearbyNetwork = Array.from({ length: 81 }, (_, index) => [100.5000 + index * 0.00025, 13.7600]);
+
+  network.loadRoadsForFacilities = async () => ({
+    type: 'FeatureCollection',
+    features: [
+      turfLine(localStub, 20),
+      turfLine(nearbyNetwork, 21),
+    ],
+  });
+  network.loadDistricts = async () => ({ type: 'FeatureCollection', features: [] });
+  network.findQgisProcess = async () => ({ found: false, command: null, version: null });
+
+  try {
+    const baseRequest = {
+      lat: 13.7500,
+      lng: 100.5000,
+      costType: 'time',
+      limit: 900,
+    };
+    const walk = await routing.analyzeFallback(normalizeAnalyzeRequest({ ...baseRequest, mode: 'walk' }));
+    const bike = await routing.analyzeFallback(normalizeAnalyzeRequest({ ...baseRequest, mode: 'bike' }));
+
+    assert.equal(walk.engine, 'js-dijkstra-fallback');
+    assert.equal(bike.engine, 'js-dijkstra-fallback');
+    assert.equal(walk.metrics.fallbackTopology.virtualConnectorCount, 0);
+    assert.ok(bike.metrics.fallbackTopology.virtualConnectorCount > 0);
+    assert.ok(bike.metrics.reachedRoadLengthKm > walk.metrics.reachedRoadLengthKm + 1);
+  } finally {
+    network.loadRoadsForFacilities = originalLoadRoads;
+    network.loadDistricts = originalLoadDistricts;
+    network.findQgisProcess = originalFindQgis;
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+});
+
 function turfLine(coordinates, id) {
   return {
     type: 'Feature',

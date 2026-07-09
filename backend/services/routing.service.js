@@ -308,6 +308,22 @@ function connectorSearchDistance(request) {
   return 250;
 }
 
+function sourceComponentThreshold(request) {
+  if (Number.isFinite(Number(process.env.FALLBACK_SOURCE_COMPONENT_MIN_SIZE))) {
+    return Number(process.env.FALLBACK_SOURCE_COMPONENT_MIN_SIZE);
+  }
+  if (request.mode === 'drive') return 1200;
+  if (request.mode === 'bike') return 800;
+  return 50;
+}
+
+function candidateComponentThreshold() {
+  if (Number.isFinite(Number(process.env.FALLBACK_TARGET_COMPONENT_MIN_SIZE))) {
+    return Number(process.env.FALLBACK_TARGET_COMPONENT_MIN_SIZE);
+  }
+  return Number(process.env.FALLBACK_MIN_SNAP_COMPONENT_SIZE) || 50;
+}
+
 function virtualConnectorLimit(request) {
   if (Number.isFinite(Number(process.env.FALLBACK_VIRTUAL_CONNECTOR_MAX))) {
     return Number(process.env.FALLBACK_VIRTUAL_CONNECTOR_MAX);
@@ -346,20 +362,21 @@ function nearestRoadNode(graph, facility, request) {
   let nearest = null;
   const connectedByComponent = new Map();
   const connectedSnapMaxMeters = connectorSearchDistance(request);
-  const minConnectedComponentSize = Number(process.env.FALLBACK_MIN_SNAP_COMPONENT_SIZE) || 50;
+  const minSourceComponentSize = sourceComponentThreshold(request);
+  const minTargetComponentSize = candidateComponentThreshold();
   for (const node of graph.nodes.values()) {
     const distanceMeters = turf.distance(point, turf.point(node.coord), { units: 'kilometers' }) * 1000;
     const componentSize = node.componentSize || 0;
     if (!nearest || distanceMeters < nearest.distanceMeters) {
       nearest = { nodeKey: node.key, coord: node.coord, distanceMeters, componentSize };
     }
-    if (distanceMeters <= connectedSnapMaxMeters && componentSize >= minConnectedComponentSize) {
+    if (distanceMeters <= connectedSnapMaxMeters && componentSize >= minTargetComponentSize) {
       const candidate = { nodeKey: node.key, coord: node.coord, distanceMeters, componentSize };
       const previous = connectedByComponent.get(node.componentId);
       if (!previous || candidate.distanceMeters < previous.distanceMeters) connectedByComponent.set(node.componentId, candidate);
     }
   }
-  if (nearest && nearest.componentSize < minConnectedComponentSize) {
+  if (nearest && nearest.componentSize < minSourceComponentSize) {
     nearest.connectedCandidates = Array.from(connectedByComponent.values())
       .filter((candidate) => candidate.nodeKey !== nearest.nodeKey)
       .sort((a, b) => a.distanceMeters - b.distanceMeters)
