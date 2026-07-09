@@ -31,30 +31,12 @@ export interface TravelCost {
   distanceMeters: number;
 }
 
-export interface DistrictCoverage {
-  code: string | number;
-  name: string;
-  coverage: Record<string, number>; // e.g., "health_walk": 3.24
-}
-
-export interface DashboardStats {
-  generatedAt: string;
-  overall: Record<string, Record<string, number>>; // e.g., { "health": { "walk": 3.24 } }
-  districts: Record<string, DistrictCoverage>;
-}
-
 export interface AccessibilityConfig {
   primary: string;
   light: string;
   fill: string;
   name: string;
   emoji: string;
-}
-
-export interface DistrictLeaderboardItem {
-  code: string | number;
-  name: string;
-  score: number;
 }
 
 export interface LayerLoadStatus {

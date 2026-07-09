@@ -20,9 +20,7 @@ import {
 } from 'lucide-react';
 import './styles.css';
 import {
-  DashboardStats,
   AccessibilityConfig,
-  DistrictLeaderboardItem,
 } from './types';
 import { getEngineStatus, analyzeServiceArea } from './services/api';
 import { AnalyzePanel } from './components/AnalyzePanel';
@@ -195,7 +193,7 @@ function App() {
 
   // Theme states
   const [basemapMode, setBasemapMode] = useState<'light' | 'dark'>('dark');
-  const [message, setMessage] = useState<string>('เมือง 15 นาที: เลือกชั้นข้อมูลและโหมดเพื่อวิเคราะห์การเข้าถึง');
+  const [message, setMessage] = useState<string>('ค้นหาสถานที่หรือคลิกบนแผนที่เพื่อเริ่มวิเคราะห์การเข้าถึง');
   const [currentZoom, setCurrentZoom] = useState<number>(11);
   const [isLayerPanelOpen, setIsLayerPanelOpen] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -203,7 +201,7 @@ function App() {
   });
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analyze'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analyze'>('analyze');
 
   // Engine status
   const [engineStatus, setEngineStatus] = useState<any>(null);
@@ -225,36 +223,12 @@ function App() {
     communities: false,
   });
   const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle' | 'drive'>('walk');
-  const [activeLeaderboardCategory, setActiveLeaderboardCategory] = useState<string>('bkk_hospitals');
-  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [districtsGeojson, setDistrictsGeojson] = useState<any>(null);
-  const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | number | null>(null);
-  const [districtSearch, setDistrictSearch] = useState<string>('');
   const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
   const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
 
   // Global POI marker visibility
   const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(true);
-
-  // Auto-sync Active Rank category based on displayed layers
-  const prevLayersRef = useRef(dashboardLayers);
-  useEffect(() => {
-    const newlyChecked = Object.keys(dashboardLayers).find(
-      key => dashboardLayers[key] && !prevLayersRef.current[key]
-    );
-    if (newlyChecked) {
-      setActiveLeaderboardCategory(newlyChecked);
-    } else {
-      if (!dashboardLayers[activeLeaderboardCategory]) {
-        const firstChecked = Object.keys(dashboardLayers).find(key => dashboardLayers[key]);
-        if (firstChecked) {
-          setActiveLeaderboardCategory(firstChecked);
-        }
-      }
-    }
-    prevLayersRef.current = dashboardLayers;
-  }, [dashboardLayers, activeLeaderboardCategory]);
-
 
   // Dynamic analysis states
   const [inspectCoords, setInspectCoords] = useState<L.LatLng | null>(null);
@@ -305,12 +279,6 @@ function App() {
 
   // Fetch initial data directly from static assets
   useEffect(() => {
-    // Fetch precomputed stats
-    fetch('/data/processed/accessibility/stats.json?t=' + Date.now())
-      .then((r) => r.json())
-      .then(setDashboardStats)
-      .catch((e) => console.error('Failed to load accessibility stats:', e));
-
     // Fetch districts boundary
     fetch('/data/processed/bma-layers/layer-13.geojson')
       .then((r) => r.json())
@@ -441,69 +409,35 @@ function App() {
     if (districtsGeojson && districtsGeojson.type === 'FeatureCollection') {
       layersRef.current.districts = L.geoJSON(districtsGeojson, {
         pane: 'districts',
-        style: (feature) => {
-          const code = feature?.properties?.DCODE || feature?.properties?.OBJECTID || feature?.properties?.name;
-          const isSelected = selectedDistrictCode === code;
-          return {
-            color: isSelected ? '#38bdf8' : basemapMode === 'dark' ? '#334155' : '#94a3b8',
-            weight: isSelected ? 3.5 : 1,
-            opacity: isSelected ? 1 : 0.6,
-            fillColor: isSelected ? '#38bdf8' : 'transparent',
-            fillOpacity: isSelected ? 0.15 : 0,
-          };
+        style: {
+          color: basemapMode === 'dark' ? '#334155' : '#94a3b8',
+          weight: 1,
+          opacity: 0.6,
+          fillColor: 'transparent',
+          fillOpacity: 0,
         },
         onEachFeature: (feature, layer: L.Layer) => {
           const name = feature.properties?.DNAME || feature.properties?.DISTRICT_N || feature.properties?.NAME || 'เขต';
-          const code = feature.properties?.DCODE || feature.properties?.OBJECTID || feature.properties?.name;
-
-          // Get coverage percentage for active leaderboard category
-          let pctText = 'ไม่มีข้อมูล';
-          if (dashboardStats && dashboardStats.districts[code]) {
-            const score = dashboardStats.districts[code].coverage[`${activeLeaderboardCategory}_${dashboardTravelMode}`];
-            if (score !== undefined) {
-              pctText = `${score}%`;
-            }
-          }
-
-          layer.bindTooltip(`<strong>เขต${name}</strong><br>เข้าถึง ${ACCESSIBILITY_PALETTE[activeLeaderboardCategory].name}: ${pctText}`, {
+          layer.bindTooltip(`<strong>เขต${name}</strong>`, {
             sticky: true,
             className: 'district-tooltip',
           });
 
           layer.on({
             mouseover: (e: L.LeafletMouseEvent) => {
-              if (selectedDistrictCode !== code) {
-                (e.target as L.Path).setStyle({
-                  color: '#67e8f9',
-                  weight: 2,
-                  fillColor: '#67e8f9',
-                  fillOpacity: 0.05,
-                });
-              }
+              (e.target as L.Path).setStyle({
+                color: '#67e8f9',
+                weight: 2,
+                fillColor: '#67e8f9',
+                fillOpacity: 0.05,
+              });
             },
             mouseout: (e: L.LeafletMouseEvent) => {
-              if (selectedDistrictCode !== code) {
-                layersRef.current.districts?.resetStyle(e.target);
-              }
-            },
-            click: (e: L.LeafletMouseEvent) => {
-              setSelectedDistrictCode(code);
-              map.fitBounds((e.target as L.FeatureGroup).getBounds(), { padding: [40, 40] });
+              layersRef.current.districts?.resetStyle(e.target);
             },
           });
         },
       }).addTo(map);
-
-      // If a district was selected, let's keep it highlighted
-      if (selectedDistrictCode) {
-        const matchLayer = Object.values((layersRef.current.districts as any)._layers).find((l: any) => {
-          const code = l.feature.properties?.DCODE || l.feature.properties?.OBJECTID || l.feature.properties?.name;
-          return code === selectedDistrictCode;
-        }) as any;
-        if (matchLayer) {
-          matchLayer.bringToFront();
-        }
-      }
     }
 
 
@@ -619,8 +553,6 @@ function App() {
     loadedAccessibilityData,
     dashboardLayers,
     dashboardTravelMode,
-    activeLeaderboardCategory,
-    selectedDistrictCode,
     basemapMode,
     activeTab,
     useCircleMarkers,
@@ -782,51 +714,6 @@ function App() {
     downloadAnchor.remove();
   };
 
-  // Dashboard calculations for Sidebar
-  const selectedCategoryStats = useMemo(() => {
-    if (!dashboardStats) return null;
-    return {
-      overall: dashboardStats.overall[activeLeaderboardCategory]?.[dashboardTravelMode] || 0,
-      name: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].name,
-      emoji: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].emoji,
-    };
-  }, [dashboardStats, activeLeaderboardCategory, dashboardTravelMode]);
-
-  const sortedDistrictRankings = useMemo<DistrictLeaderboardItem[]>(() => {
-    if (!dashboardStats || !districtsGeojson) return [];
-
-    const key = `${activeLeaderboardCategory}_${dashboardTravelMode}`;
-    return Object.values(dashboardStats.districts)
-      .map((d) => ({
-        code: d.code,
-        name: d.name,
-        score: d.coverage[key] || 0,
-      }))
-      .filter((d) => d.name.includes(districtSearch.trim()))
-      .sort((a, b) => b.score - a.score);
-  }, [dashboardStats, districtsGeojson, activeLeaderboardCategory, dashboardTravelMode, districtSearch]);
-
-  const handleDistrictLeaderboardClick = (districtCode: string | number) => {
-    setSelectedDistrictCode(districtCode);
-    const map = mapRef.current;
-    if (!map || !layersRef.current.districts) return;
-
-    // Find the feature layer in leaflet districts group and zoom to it
-    const layer = Object.values((layersRef.current.districts as any)._layers).find((l: any) => {
-      const code = l.feature.properties?.DCODE || l.feature.properties?.OBJECTID || l.feature.properties?.name;
-      return code === districtCode;
-    }) as any;
-    if (layer) {
-      map.fitBounds(layer.getBounds(), { padding: [40, 40] });
-    }
-  };
-
-  const getDistrictScoreBadgeClass = (score: number) => {
-    if (score >= 60) return 'badge-high';
-    if (score >= 25) return 'badge-medium';
-    return 'badge-low';
-  };
-
   const getAnalysisEngineLabel = (result: any) => {
     if (result?.cacheHit) return 'Cache';
     if (result?.engine === 'postgis-pgrouting') return 'pgRouting';
@@ -941,13 +828,12 @@ function App() {
     <main className={`app-shell ${basemapMode === 'dark' ? 'is-dark-map' : 'is-light-map'}`}>
       {/* MAP STAGE */}
       <section className="map-stage">
-        <div id="map" className={`zoom-${currentZoom}`} aria-label="Bangkok 15-Minute City Map" />
+        <div id="map" className={`zoom-${currentZoom}`} aria-label="Bangkok Service Area Map" />
 
         {/* Map float toolbar */}
         <div className="map-toolbar" aria-label="Map tools">
           <button
             onClick={() => {
-              setSelectedDistrictCode(null);
               mapRef.current?.setView(BANGKOK_CENTER, 11);
             }}
             title="กลับสู่มุมมองกรุงเทพฯ"
@@ -1038,8 +924,8 @@ function App() {
               <div className="webmap-layer-panel">
                 <div className="webmap-panel-header">
                   <div>
-                    <span>{activeTab === 'dashboard' ? '15-Min City Layers' : 'Analysis Layers'}</span>
-                    <h2>{activeTab === 'dashboard' ? 'ชั้นข้อมูลเมือง 15 นาที' : 'ชั้นข้อมูลผลวิเคราะห์'}</h2>
+                    <span>{activeTab === 'dashboard' ? 'Service Layers' : 'Analysis Layers'}</span>
+                    <h2>{activeTab === 'dashboard' ? 'ชั้นข้อมูลบริการ' : 'ชั้นข้อมูลผลวิเคราะห์'}</h2>
                   </div>
                   <button type="button" onClick={() => setIsLayerPanelOpen(false)} title="ปิดแผงชั้นข้อมูล">
                     <X size={16} />
@@ -1081,16 +967,13 @@ function App() {
                               const config = ACCESSIBILITY_PALETTE[key];
                               if (!config) return null;
                               const isVisible = dashboardLayers[key];
-                              const isActive = activeLeaderboardCategory === key;
                               const isLayerLoading =
                                 loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
 
                               return (
                                 <div
                                   key={key}
-                                  className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
-                                  onClick={() => setActiveLeaderboardCategory(key)}
-                                  title="เลือกใช้ชั้นนี้ในการจัดอันดับเขต"
+                                  className="acc-layer-item"
                                 >
                                   <label className="acc-layer-label" onClick={(e) => e.stopPropagation()}>
                                     <input
@@ -1107,11 +990,7 @@ function App() {
 
                                   {isLayerLoading ? (
                                     <Loader2 className="spin" size={12} />
-                                  ) : (
-                                    <span className="webmap-rank-tag" style={{ opacity: isActive ? 1 : 0 }}>
-                                      Rank
-                                    </span>
-                                  )}
+                                  ) : null}
                                 </div>
                               );
                             })}
@@ -1129,7 +1008,7 @@ function App() {
         </div>
 
         <div className="map-mode-badge">
-          {activeTab === 'dashboard' ? '📊 โหมดเมือง 15 นาที (15-Min City)' : '📍 โหมดวิเคราะห์เข้าถึงรายจุด (pgRouting)'}
+          {activeTab === 'dashboard' ? '🗺️ ชั้นข้อมูลบริการ' : '📍 โหมดวิเคราะห์เข้าถึงรายจุด (pgRouting)'}
         </div>
       </section>
 
@@ -1141,8 +1020,8 @@ function App() {
             <Radar size={25} />
           </div>
           <div>
-            <p className="eyebrow">Bangkok GIS Dashboard</p>
-            <h1>เมือง 15 นาที (15-Min City)</h1>
+            <p className="eyebrow">Bangkok GIS Tool</p>
+            <h1>วิเคราะห์พื้นที่บริการ</h1>
           </div>
         </div>
 
@@ -1164,7 +1043,7 @@ function App() {
               transition: 'all 0.2s ease',
             }}
           >
-            🗺️ แผนที่ 15 นาที
+            🗺️ ชั้นข้อมูลบริการ
           </button>
           <button 
             className={`tab-btn ${activeTab === 'analyze' ? 'is-active' : ''}`}
@@ -1186,113 +1065,7 @@ function App() {
           </button>
         </div>
 
-        {activeTab === 'dashboard' ? (
-          <>
-            {/* SUMMARY OF ALL ASPECTS */}
-            <section className="workflow-card all-aspects-summary-card">
-              <div className="section-header">
-                <h2>📊 สรุปความครอบคลุมรายด้าน (ทั้งกรุงเทพฯ)</h2>
-              </div>
-              <div className="aspects-summary-list" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-                {Object.entries(ACCESSIBILITY_PALETTE).map(([key, config]) => {
-                  const score = dashboardStats?.overall[key]?.[dashboardTravelMode] ?? 0;
-                  return (
-                    <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '8px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '16px' }}>{config.emoji}</span>
-                        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: basemapMode === 'dark' ? '#f8fafc' : '#0f172a' }}>{config.name}</span>
-                      </div>
-                      <strong style={{ fontSize: '0.9rem', color: config.primary }}>{score}%</strong>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            {/* OVERALL METRIC COVERAGE */}
-            {selectedCategoryStats && (
-              <section className="result-card coverage-summary-card">
-                <div className="result-head">
-                  <div>
-                    <span>อัตราความครอบคลุมของกรุงเทพฯ</span>
-                    <h2>
-                      {selectedCategoryStats.emoji} {selectedCategoryStats.name}
-                    </h2>
-                  </div>
-                  <strong
-                    style={{
-                      backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].light + '33',
-                      color: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].fill,
-                    }}
-                  >
-                    {selectedCategoryStats.overall}%
-                  </strong>
-                </div>
-
-                <div className="coverage-progress-bar-bg">
-                  <div
-                    className="coverage-progress-bar-fill"
-                    style={{
-                      width: `${selectedCategoryStats.overall}%`,
-                      backgroundColor: ACCESSIBILITY_PALETTE[activeLeaderboardCategory].primary,
-                    }}
-                  />
-                </div>
-                <p className="coverage-description-text">
-                  ประชากรในพื้นที่ระบายสีสามารถเดินทางด้วย{' '}
-                  <strong>{dashboardTravelMode === 'walk' ? 'เท้า' : dashboardTravelMode === 'cycle' ? 'จักรยาน' : 'รถยนต์'}</strong>{' '}
-                  ไปถึง{selectedCategoryStats.name}ที่ใกล้ที่สุดได้ภายใน 15 นาที
-                </p>
-              </section>
-            )}
-
-            {/* DISTRICT LEADERBOARD */}
-            <section className="workflow-card district-ranking-card">
-              <div className="district-ranking-header">
-                <h2>จัดอันดับความครอบคลุมตามเขตการปกครอง</h2>
-                <span>{sortedDistrictRankings.length} เขต</span>
-              </div>
-
-              <div className="search-box-container">
-                <Search size={16} className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="ค้นหาเขตในกรุงเทพฯ..."
-                  value={districtSearch}
-                  onChange={(e) => setDistrictSearch(e.target.value)}
-                />
-                {districtSearch && (
-                  <button className="clear-search-btn" onClick={() => setDistrictSearch('')}>
-                    ×
-                  </button>
-                )}
-              </div>
-
-              <div className="district-leaderboard-list">
-                {sortedDistrictRankings.map((district, index) => {
-                  const isSelected = selectedDistrictCode === district.code;
-                  return (
-                    <div
-                      key={district.code}
-                      className={`leaderboard-item ${isSelected ? 'is-selected' : ''}`}
-                      onClick={() => handleDistrictLeaderboardClick(district.code)}
-                    >
-                      <span className="rank-num">#{index + 1}</span>
-                      <span className="district-name">เขต{district.name}</span>
-                      <span className={`score-badge ${getDistrictScoreBadgeClass(district.score)}`}>{district.score}%</span>
-                    </div>
-                  );
-                })}
-                {sortedDistrictRankings.length === 0 && <p className="empty-search-text">ไม่พบเขตที่ค้นหา</p>}
-              </div>
-              {selectedDistrictCode && (
-                <button className="reset-district-selection-btn" onClick={() => setSelectedDistrictCode(null)}>
-                  ล้างการเลือกเขต
-                </button>
-              )}
-            </section>
-          </>
-        ) : (
+        {activeTab === 'analyze' && (
           /* DYNAMIC ANALYSIS PANEL */
           <>
             <section className="workflow-card">
