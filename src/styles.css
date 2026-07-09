@@ -1371,13 +1371,13 @@ body {
 }
 
 .app-shell {
-  grid-template-columns: 460px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 460px;
   background:
     linear-gradient(120deg, rgba(10, 24, 31, 0.96), rgba(22, 42, 48, 0.9) 54%, rgba(10, 24, 31, 0.96));
 }
 
 .map-stage {
-  order: 2;
+  order: 1;
   isolation: isolate;
   background: #071015;
 }
@@ -1456,15 +1456,15 @@ body {
 }
 
 .control-panel {
-  order: 1;
+  order: 2;
   gap: 14px;
-  border-right: 1px solid rgba(148, 163, 184, 0.14);
-  border-left: 0;
+  border-right: 0;
+  border-left: 1px solid rgba(148, 163, 184, 0.14);
   padding: 20px;
   color: #dbe7ef;
   background:
     linear-gradient(180deg, rgba(18, 31, 40, 0.96), rgba(11, 20, 27, 0.98));
-  box-shadow: 30px 0 70px rgba(0, 0, 0, 0.32);
+  box-shadow: -30px 0 70px rgba(0, 0, 0, 0.38);
 }
 
 .brand-row {
@@ -1784,7 +1784,7 @@ h2 {
 
 @media (max-width: 1180px) {
   .app-shell {
-    grid-template-columns: 420px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 420px;
   }
 
   .layer-source-grid {
