@@ -962,168 +962,170 @@ function App() {
           </button>
         </div>
 
-        {activeTab === 'analyze' && (
-          <div className="webmap-search-panel">
-            <form className="place-search-form is-map-control" onSubmit={handlePlaceSearch}>
-              <div className="place-search-input-wrap">
-                <Search size={16} />
-                <input
-                  type="search"
-                  placeholder="ค้นหาสถานที่ในกรุงเทพฯ"
-                  value={placeQuery}
-                  onChange={(event) => setPlaceQuery(event.target.value)}
-                />
-              </div>
-              <button type="submit" disabled={isSearchingPlace}>
-                {isSearchingPlace ? <Loader2 className="spin" size={15} /> : <Search size={15} />}
-                <span>{isSearchingPlace ? 'ค้นหา...' : 'ค้นหา'}</span>
-              </button>
-            </form>
+        <div className={`webmap-control-stack ${activeTab === 'analyze' ? 'has-search' : 'only-layers'}`}>
+          {activeTab === 'analyze' && (
+            <div className="webmap-search-panel">
+              <form className="place-search-form is-map-control" onSubmit={handlePlaceSearch}>
+                <div className="place-search-input-wrap">
+                  <Search size={16} />
+                  <input
+                    type="search"
+                    placeholder="ค้นหาสถานที่ในกรุงเทพฯ"
+                    value={placeQuery}
+                    onChange={(event) => setPlaceQuery(event.target.value)}
+                  />
+                </div>
+                <button type="submit" disabled={isSearchingPlace}>
+                  {isSearchingPlace ? <Loader2 className="spin" size={15} /> : <Search size={15} />}
+                  <span>{isSearchingPlace ? 'ค้นหา...' : 'ค้นหา'}</span>
+                </button>
+              </form>
 
-            {placeSearchError && <p className="place-search-error">{placeSearchError}</p>}
+              {placeSearchError && <p className="place-search-error">{placeSearchError}</p>}
 
-            {placeResults.length > 0 && (
-              <div className="place-results-list is-map-control">
-                {placeResults.map((place) => (
-                  <button
-                    key={place.place_id}
-                    type="button"
-                    className="place-result-item"
-                    onClick={() => handleSelectPlace(place)}
-                  >
-                    <MapPin size={15} />
-                    <span>{getPlaceLabel(place)}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+              {placeResults.length > 0 && (
+                <div className="place-results-list is-map-control">
+                  {placeResults.map((place) => (
+                    <button
+                      key={place.place_id}
+                      type="button"
+                      className="place-result-item"
+                      onClick={() => handleSelectPlace(place)}
+                    >
+                      <MapPin size={15} />
+                      <span>{getPlaceLabel(place)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            <div className={`selected-point-card is-map-control ${inspectCoords ? 'has-point' : ''}`}>
-              <MapPin size={20} />
-              <div>
-                <span>จุดวิเคราะห์</span>
-                <strong>
-                  {inspectCoords
-                    ? selectedPlaceName || `${inspectCoords.lat.toFixed(6)}, ${inspectCoords.lng.toFixed(6)}`
-                    : 'ค้นหาสถานที่หรือคลิกบนแผนที่'}
-                </strong>
+              <div className={`selected-point-card is-map-control ${inspectCoords ? 'has-point' : ''}`}>
+                <MapPin size={20} />
+                <div>
+                  <span>จุดวิเคราะห์</span>
+                  <strong>
+                    {inspectCoords
+                      ? selectedPlaceName || `${inspectCoords.lat.toFixed(6)}, ${inspectCoords.lng.toFixed(6)}`
+                      : 'ค้นหาสถานที่หรือคลิกบนแผนที่'}
+                  </strong>
+                  {inspectCoords && (
+                    <small>{inspectCoords.lat.toFixed(6)}, {inspectCoords.lng.toFixed(6)}</small>
+                  )}
+                </div>
                 {inspectCoords && (
-                  <small>{inspectCoords.lat.toFixed(6)}, {inspectCoords.lng.toFixed(6)}</small>
+                  <button type="button" onClick={handleClearAnalysisPoint}>
+                    ล้าง
+                  </button>
                 )}
               </div>
-              {inspectCoords && (
-                <button type="button" onClick={handleClearAnalysisPoint}>
-                  ล้าง
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className={`webmap-layer-widget ${isLayerPanelOpen ? 'is-open' : ''}`}>
-          <button
-            type="button"
-            className="webmap-layer-toggle"
-            onClick={() => setIsLayerPanelOpen((open) => !open)}
-            aria-expanded={isLayerPanelOpen}
-            title="เปิด/ปิดชั้นข้อมูล"
-          >
-            <Layers size={18} />
-            <span>ชั้นข้อมูล</span>
-            <strong>{activeTab === 'dashboard' ? visibleDashboardLayerCount : Object.values(analysisLayers).filter(Boolean).length}</strong>
-          </button>
-
-          {isLayerPanelOpen && (
-            <div className="webmap-layer-panel">
-              <div className="webmap-panel-header">
-                <div>
-                  <span>{activeTab === 'dashboard' ? '15-Min City Layers' : 'Analysis Layers'}</span>
-                  <h2>{activeTab === 'dashboard' ? 'ชั้นข้อมูลเมือง 15 นาที' : 'ชั้นข้อมูลผลวิเคราะห์'}</h2>
-                </div>
-                <button type="button" onClick={() => setIsLayerPanelOpen(false)} title="ปิดแผงชั้นข้อมูล">
-                  <X size={16} />
-                </button>
-              </div>
-
-              {activeTab === 'dashboard' ? (
-                <>
-                  <div className="travel-mode-selector is-map-control">
-                    <button className={dashboardTravelMode === 'walk' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('walk')} type="button">
-                      <Footprints size={16} />
-                      <span>เดิน</span>
-                    </button>
-                    <button className={dashboardTravelMode === 'cycle' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('cycle')} type="button">
-                      <Bike size={16} />
-                      <span>จักรยาน</span>
-                    </button>
-                    <button className={dashboardTravelMode === 'drive' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('drive')} type="button">
-                      <Car size={16} />
-                      <span>รถยนต์</span>
-                    </button>
-                  </div>
-
-                  <label className="webmap-poi-toggle">
-                    <input
-                      type="checkbox"
-                      checked={showPoiMarkers}
-                      onChange={(e) => setShowPoiMarkers(e.target.checked)}
-                    />
-                    <span>แสดงหมุดบริการ</span>
-                  </label>
-
-                  <div className="accessibility-layers-list is-map-control">
-                    {ACCESSIBILITY_GROUPS.map((group) => (
-                      <div key={group.id} className="webmap-layer-group">
-                        <div className="webmap-layer-group-title">{group.name}</div>
-                        <div className="webmap-layer-group-items">
-                          {group.categories.map((key) => {
-                            const config = ACCESSIBILITY_PALETTE[key];
-                            if (!config) return null;
-                            const isVisible = dashboardLayers[key];
-                            const isActive = activeLeaderboardCategory === key;
-                            const isLayerLoading =
-                              loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
-
-                            return (
-                              <div
-                                key={key}
-                                className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
-                                onClick={() => setActiveLeaderboardCategory(key)}
-                                title="เลือกใช้ชั้นนี้ในการจัดอันดับเขต"
-                              >
-                                <label className="acc-layer-label" onClick={(e) => e.stopPropagation()}>
-                                  <input
-                                    type="checkbox"
-                                    checked={isVisible}
-                                    onChange={(e) => {
-                                      setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
-                                    }}
-                                  />
-                                  <span className="layer-dot" style={{ backgroundColor: config.primary }} />
-                                  <span className="layer-emoji">{config.emoji}</span>
-                                  <span className="layer-title">{config.name}</span>
-                                </label>
-
-                                {isLayerLoading ? (
-                                  <Loader2 className="spin" size={12} />
-                                ) : (
-                                  <span className="webmap-rank-tag" style={{ opacity: isActive ? 1 : 0 }}>
-                                    Rank
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <LayerControl layers={analysisLayers} onChange={setAnalysisLayers} />
-              )}
             </div>
           )}
+
+          <div className={`webmap-layer-widget ${isLayerPanelOpen ? 'is-open' : ''}`}>
+            <button
+              type="button"
+              className="webmap-layer-toggle"
+              onClick={() => setIsLayerPanelOpen((open) => !open)}
+              aria-expanded={isLayerPanelOpen}
+              title="เปิด/ปิดชั้นข้อมูล"
+            >
+              <Layers size={18} />
+              <span>ชั้นข้อมูล</span>
+              <strong>{activeTab === 'dashboard' ? visibleDashboardLayerCount : Object.values(analysisLayers).filter(Boolean).length}</strong>
+            </button>
+
+            {isLayerPanelOpen && (
+              <div className="webmap-layer-panel">
+                <div className="webmap-panel-header">
+                  <div>
+                    <span>{activeTab === 'dashboard' ? '15-Min City Layers' : 'Analysis Layers'}</span>
+                    <h2>{activeTab === 'dashboard' ? 'ชั้นข้อมูลเมือง 15 นาที' : 'ชั้นข้อมูลผลวิเคราะห์'}</h2>
+                  </div>
+                  <button type="button" onClick={() => setIsLayerPanelOpen(false)} title="ปิดแผงชั้นข้อมูล">
+                    <X size={16} />
+                  </button>
+                </div>
+
+                {activeTab === 'dashboard' ? (
+                  <>
+                    <div className="travel-mode-selector is-map-control">
+                      <button className={dashboardTravelMode === 'walk' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('walk')} type="button">
+                        <Footprints size={16} />
+                        <span>เดิน</span>
+                      </button>
+                      <button className={dashboardTravelMode === 'cycle' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('cycle')} type="button">
+                        <Bike size={16} />
+                        <span>จักรยาน</span>
+                      </button>
+                      <button className={dashboardTravelMode === 'drive' ? 'is-active' : ''} onClick={() => setDashboardTravelMode('drive')} type="button">
+                        <Car size={16} />
+                        <span>รถยนต์</span>
+                      </button>
+                    </div>
+
+                    <label className="webmap-poi-toggle">
+                      <input
+                        type="checkbox"
+                        checked={showPoiMarkers}
+                        onChange={(e) => setShowPoiMarkers(e.target.checked)}
+                      />
+                      <span>แสดงหมุดบริการ</span>
+                    </label>
+
+                    <div className="accessibility-layers-list is-map-control">
+                      {ACCESSIBILITY_GROUPS.map((group) => (
+                        <div key={group.id} className="webmap-layer-group">
+                          <div className="webmap-layer-group-title">{group.name}</div>
+                          <div className="webmap-layer-group-items">
+                            {group.categories.map((key) => {
+                              const config = ACCESSIBILITY_PALETTE[key];
+                              if (!config) return null;
+                              const isVisible = dashboardLayers[key];
+                              const isActive = activeLeaderboardCategory === key;
+                              const isLayerLoading =
+                                loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
+
+                              return (
+                                <div
+                                  key={key}
+                                  className={`acc-layer-item ${isActive ? 'is-active-row' : ''}`}
+                                  onClick={() => setActiveLeaderboardCategory(key)}
+                                  title="เลือกใช้ชั้นนี้ในการจัดอันดับเขต"
+                                >
+                                  <label className="acc-layer-label" onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={isVisible}
+                                      onChange={(e) => {
+                                        setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
+                                      }}
+                                    />
+                                    <span className="layer-dot" style={{ backgroundColor: config.primary }} />
+                                    <span className="layer-emoji">{config.emoji}</span>
+                                    <span className="layer-title">{config.name}</span>
+                                  </label>
+
+                                  {isLayerLoading ? (
+                                    <Loader2 className="spin" size={12} />
+                                  ) : (
+                                    <span className="webmap-rank-tag" style={{ opacity: isActive ? 1 : 0 }}>
+                                      Rank
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <LayerControl layers={analysisLayers} onChange={setAnalysisLayers} />
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="map-mode-badge">
