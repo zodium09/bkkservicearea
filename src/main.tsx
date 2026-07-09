@@ -29,6 +29,13 @@ import { ResultSummary } from './components/ResultSummary';
 import type { CostType, TravelMode } from './types/gis';
 
 const BANGKOK_CENTER: L.LatLngExpression = [13.7563, 100.5018];
+const BANGKOK_SEARCH_VIEWBOX = '100.327,13.955,100.938,13.494';
+const BANGKOK_BOUNDS = {
+  minLat: 13.49,
+  maxLat: 13.96,
+  minLng: 100.32,
+  maxLng: 100.94,
+};
 const BASEMAPS = {
   light: {
     name: 'OpenStreetMap Light',
@@ -172,6 +179,15 @@ function escapeHtml(value: any): string {
     .replaceAll("'", '&#39;');
 }
 
+interface PlaceSearchResult {
+  place_id: number | string;
+  display_name: string;
+  lat: string;
+  lon: string;
+  type?: string;
+  address?: Record<string, string>;
+}
+
 function App() {
   const mapRef = useRef<L.Map | null>(null);
 
@@ -236,6 +252,11 @@ function App() {
 
   // Dynamic analysis states
   const [inspectCoords, setInspectCoords] = useState<L.LatLng | null>(null);
+  const [selectedPlaceName, setSelectedPlaceName] = useState<string>('');
+  const [placeQuery, setPlaceQuery] = useState<string>('');
+  const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
+  const [isSearchingPlace, setIsSearchingPlace] = useState<boolean>(false);
+  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
   const [analyzeDistance, setAnalyzeDistance] = useState<number>(1000);
   const [analysisMode, setAnalysisMode] = useState<TravelMode>('walk');
   const [analysisCostType, setAnalysisCostType] = useState<CostType>('time');
@@ -251,6 +272,7 @@ function App() {
   const [analyzeResults, setAnalyzeResults] = useState<any>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const placeSearchRequestRef = useRef<number>(0);
 
   // Leaflet Layer References
   const layersRef = useRef<{
@@ -362,6 +384,11 @@ function App() {
     map.on('click', (e: L.LeafletMouseEvent) => {
       if (activeTabRef.current === 'analyze') {
         setInspectCoords(e.latlng);
+        setSelectedPlaceName('ตำแหน่งที่เลือกบนแผนที่');
+        setPlaceResults([]);
+        setPlaceSearchError(null);
+        setAnalyzeResults(null);
+        setAnalyzeError(null);
       }
     });
 
@@ -474,111 +501,113 @@ function App() {
     }
 
 
-    // Draw Accessibility Polygons and POIs
-    Object.entries(dashboardLayers).forEach(([category, visible]) => {
-      if (!visible) return;
+    // Draw dashboard accessibility polygons and POIs only in dashboard mode.
+    if (activeTab === 'dashboard') {
+      Object.entries(dashboardLayers).forEach(([category, visible]) => {
+        if (!visible) return;
 
-      const config = ACCESSIBILITY_PALETTE[category];
-      const areaKey = `${category}-area-${dashboardTravelMode}`;
-      const poisKey = `${category}-pois`;
+        const config = ACCESSIBILITY_PALETTE[category];
+        const areaKey = `${category}-area-${dashboardTravelMode}`;
+        const poisKey = `${category}-pois`;
 
-      // Render Service Area Polygons
-      const areaData = loadedAccessibilityData[areaKey];
-      if (areaData) {
-        layersRef.current.accessibility[areaKey] = L.geoJSON(areaData, {
-          pane: 'analysisArea',
-          style: {
-            color: config.primary,
-            weight: 1.5,
-            opacity: 0.85,
-            fillColor: config.light,
-            fillOpacity: basemapMode === 'dark' ? 0.28 : 0.22,
-          },
-        }).addTo(map);
-      }
+        // Render Service Area Polygons
+        const areaData = loadedAccessibilityData[areaKey];
+        if (areaData) {
+          layersRef.current.accessibility[areaKey] = L.geoJSON(areaData, {
+            pane: 'analysisArea',
+            style: {
+              color: config.primary,
+              weight: 1.5,
+              opacity: 0.85,
+              fillColor: config.light,
+              fillOpacity: basemapMode === 'dark' ? 0.28 : 0.22,
+            },
+          }).addTo(map);
+        }
 
-      // Render POI point markers
-      const poisData = loadedAccessibilityData[poisKey];
-      if (poisData && showPoiMarkers) {
-        layersRef.current.pois[poisKey] = L.geoJSON(poisData, {
-          pane: 'servicePoints',
-          pointToLayer: (feature, latlng) => {
-            const name = feature.properties.name || 'จุดบริการ';
-            let color = config.primary;
+        // Render POI point markers
+        const poisData = loadedAccessibilityData[poisKey];
+        if (poisData && showPoiMarkers) {
+          layersRef.current.pois[poisKey] = L.geoJSON(poisData, {
+            pane: 'servicePoints',
+            pointToLayer: (feature, latlng) => {
+              const name = feature.properties.name || 'จุดบริการ';
+              let color = config.primary;
 
-            // LOD Optimization: Use canvas CircleMarkers at lower zooms to prevent browser freezing
-            if (useCircleMarkers) {
-              return L.circleMarker(latlng, {
-                pane: 'servicePoints',
-                radius: 4.5,
-                fillColor: color,
-                color: '#ffffff',
-                weight: 1,
-                fillOpacity: 0.9,
-              });
-            }
+              // LOD Optimization: Use canvas CircleMarkers at lower zooms to prevent browser freezing
+              if (useCircleMarkers) {
+                return L.circleMarker(latlng, {
+                  pane: 'servicePoints',
+                  radius: 4.5,
+                  fillColor: color,
+                  color: '#ffffff',
+                  weight: 1,
+                  fillOpacity: 0.9,
+                });
+              }
 
-            let shortName = name;
-            let emoji = config.emoji;
+              let shortName = name;
+              let emoji = config.emoji;
 
-            if (category.startsWith('schools_')) {
-              shortName = name.replace('โรงเรียน', 'รร.');
-            } else if (category === 'health_centers') {
-              shortName = name.replace('ศูนย์บริการสาธารณสุข', 'ศบส.');
-            } else if (category.endsWith('_hospitals')) {
-              shortName = name.replace('โรงพยาบาล', 'รพ.');
-            } else if (category === 'transit_train') {
-              shortName = name.replace('สถานีรถไฟฟ้าเอ็มอาร์ที', 'MRT ').replace('สถานีรถไฟฟ้าบีทีเอส', 'BTS ');
-              emoji = '🚆';
-            } else if (category === 'transit_boat') {
-              shortName = name.replace('ท่าเรือโดยสาร', 'ท่า').replace('ท่าเรือ', 'ท่า');
-              emoji = '🚢';
-            } else if (category === 'transit_bus') {
-              shortName = name.replace('ป้ายรถประจำทาง', 'ป้าย').replace('ป้ายรถเมล์', 'ป้าย');
-              emoji = '🚌';
-            } else if (category === 'fire_stations') {
-              shortName = name.replace('สถานีดับเพลิงและกู้ภัย', 'ดับเพลิง').replace('สถานีดับเพลิง', 'ดับเพลิง');
-              emoji = '🚒';
-            } else if (category === 'police_stations') {
-              shortName = name.replace('สถานีตำรวจนครบาล', 'สน.').replace('สถานีตำรวจภูธร', 'สภ.').replace('สถานีตำรวจ', 'ตำรวจ');
-              emoji = '👮';
-            } else if (category === 'communities') {
-              shortName = name.replace('ชุมชน', 'ชช.');
-              emoji = '🏘️';
-            }
+              if (category.startsWith('schools_')) {
+                shortName = name.replace('โรงเรียน', 'รร.');
+              } else if (category === 'health_centers') {
+                shortName = name.replace('ศูนย์บริการสาธารณสุข', 'ศบส.');
+              } else if (category.endsWith('_hospitals')) {
+                shortName = name.replace('โรงพยาบาล', 'รพ.');
+              } else if (category === 'transit_train') {
+                shortName = name.replace('สถานีรถไฟฟ้าเอ็มอาร์ที', 'MRT ').replace('สถานีรถไฟฟ้าบีทีเอส', 'BTS ');
+                emoji = '🚆';
+              } else if (category === 'transit_boat') {
+                shortName = name.replace('ท่าเรือโดยสาร', 'ท่า').replace('ท่าเรือ', 'ท่า');
+                emoji = '🚢';
+              } else if (category === 'transit_bus') {
+                shortName = name.replace('ป้ายรถประจำทาง', 'ป้าย').replace('ป้ายรถเมล์', 'ป้าย');
+                emoji = '🚌';
+              } else if (category === 'fire_stations') {
+                shortName = name.replace('สถานีดับเพลิงและกู้ภัย', 'ดับเพลิง').replace('สถานีดับเพลิง', 'ดับเพลิง');
+                emoji = '🚒';
+              } else if (category === 'police_stations') {
+                shortName = name.replace('สถานีตำรวจนครบาล', 'สน.').replace('สถานีตำรวจภูธร', 'สภ.').replace('สถานีตำรวจ', 'ตำรวจ');
+                emoji = '👮';
+              } else if (category === 'communities') {
+                shortName = name.replace('ชุมชน', 'ชช.');
+                emoji = '🏘️';
+              }
 
-            const iconHtml = `
-              <div class="poi-marker-container category-${category}">
-                <div class="poi-marker-icon" style="background-color: ${color};">
-                  <span class="poi-marker-emoji">${emoji}</span>
+              const iconHtml = `
+                <div class="poi-marker-container category-${category}">
+                  <div class="poi-marker-icon" style="background-color: ${color};">
+                    <span class="poi-marker-emoji">${emoji}</span>
+                  </div>
+                  <span class="poi-map-label">${escapeHtml(shortName)}</span>
                 </div>
-                <span class="poi-map-label">${escapeHtml(shortName)}</span>
-              </div>
-            `;
+              `;
 
-            const icon = L.divIcon({
-              html: iconHtml,
-              className: 'custom-poi-icon',
-              iconSize: [24, 24],
-              iconAnchor: [12, 12],
-            });
+              const icon = L.divIcon({
+                html: iconHtml,
+                className: 'custom-poi-icon',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+              });
 
-            return L.marker(latlng, { icon });
-          },
-          onEachFeature: (feature, layer: L.Layer) => {
-            let tooltipContent = `<strong>${escapeHtml(feature.properties.name)}</strong>`;
-            if (feature.properties.school_type) {
-              tooltipContent += `<br><span style="display:inline-block; margin-top:4px; padding:2px 6px; font-size:0.72rem; font-weight:bold; background-color:#e0f2fe; color:#0369a1; border-radius:4px; border:1px solid #bae6fd;">${escapeHtml(feature.properties.school_type)}</span>`;
-            }
-            tooltipContent += `<br>เขต${escapeHtml(feature.properties.district || 'ไม่ระบุ')}`;
+              return L.marker(latlng, { icon });
+            },
+            onEachFeature: (feature, layer: L.Layer) => {
+              let tooltipContent = `<strong>${escapeHtml(feature.properties.name)}</strong>`;
+              if (feature.properties.school_type) {
+                tooltipContent += `<br><span style="display:inline-block; margin-top:4px; padding:2px 6px; font-size:0.72rem; font-weight:bold; background-color:#e0f2fe; color:#0369a1; border-radius:4px; border:1px solid #bae6fd;">${escapeHtml(feature.properties.school_type)}</span>`;
+              }
+              tooltipContent += `<br>เขต${escapeHtml(feature.properties.district || 'ไม่ระบุ')}`;
 
-            layer.bindTooltip(tooltipContent, {
-              direction: 'top',
-            });
-          },
-        }).addTo(map);
-      }
-    });
+              layer.bindTooltip(tooltipContent, {
+                direction: 'top',
+              });
+            },
+          }).addTo(map);
+        }
+      });
+    }
   }, [
     districtsGeojson,
     loadedAccessibilityData,
@@ -587,6 +616,7 @@ function App() {
     activeLeaderboardCategory,
     selectedDistrictCode,
     basemapMode,
+    activeTab,
     useCircleMarkers,
     showPoiMarkers,
   ]);
@@ -620,7 +650,7 @@ function App() {
     layersRef.current.dynamicMarker?.remove();
     layersRef.current.dynamicMarker = null;
 
-    if (inspectCoords) {
+    if (inspectCoords && analysisLayers.startPoint) {
       layersRef.current.dynamicMarker = L.marker(inspectCoords, {
         icon: L.divIcon({
           html: `
@@ -637,7 +667,7 @@ function App() {
       }).addTo(map);
       map.panTo(inspectCoords);
     }
-  }, [inspectCoords]);
+  }, [inspectCoords, analysisLayers.startPoint]);
 
   // Render Dynamic Analysis results
   useEffect(() => {
@@ -789,6 +819,111 @@ function App() {
     if (score >= 60) return 'badge-high';
     if (score >= 25) return 'badge-medium';
     return 'badge-low';
+  };
+
+  const getAnalysisEngineLabel = (result: any) => {
+    if (result?.cacheHit) return 'Cache';
+    if (result?.engine === 'postgis-pgrouting') return 'pgRouting';
+    if (result?.engine === 'js-dijkstra-fallback') return 'Road Network JS';
+    if (result?.analysisQuality === 'approximate') return 'Approximate';
+    return 'Network';
+  };
+
+  const isBangkokCoordinate = (lat: number, lng: number) => (
+    lat >= BANGKOK_BOUNDS.minLat &&
+    lat <= BANGKOK_BOUNDS.maxLat &&
+    lng >= BANGKOK_BOUNDS.minLng &&
+    lng <= BANGKOK_BOUNDS.maxLng
+  );
+
+  const getPlaceLabel = (place: PlaceSearchResult) => {
+    const parts = place.display_name.split(',').map((part) => part.trim()).filter(Boolean);
+    return parts.slice(0, 3).join(', ') || place.display_name;
+  };
+
+  const handlePlaceSearch = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+    const query = placeQuery.trim();
+    if (!query) {
+      setPlaceResults([]);
+      setPlaceSearchError('พิมพ์ชื่อสถานที่ก่อนค้นหา');
+      return;
+    }
+
+    const requestId = placeSearchRequestRef.current + 1;
+    placeSearchRequestRef.current = requestId;
+    setIsSearchingPlace(true);
+    setPlaceSearchError(null);
+
+    try {
+      const params = new URLSearchParams({
+        format: 'jsonv2',
+        q: `${query} กรุงเทพมหานคร`,
+        limit: '6',
+        addressdetails: '1',
+        bounded: '1',
+        viewbox: BANGKOK_SEARCH_VIEWBOX,
+        countrycodes: 'th',
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+        headers: {
+          Accept: 'application/json',
+          'Accept-Language': 'th,en',
+        },
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const data = (await response.json()) as PlaceSearchResult[];
+      if (placeSearchRequestRef.current !== requestId) return;
+
+      const bangkokResults = data.filter((place) => {
+        const lat = Number(place.lat);
+        const lng = Number(place.lon);
+        return Number.isFinite(lat) && Number.isFinite(lng) && isBangkokCoordinate(lat, lng);
+      });
+
+      setPlaceResults(bangkokResults);
+      if (!bangkokResults.length) {
+        setPlaceSearchError('ไม่พบสถานที่ในกรุงเทพฯ');
+      }
+    } catch (error) {
+      console.error('Place search failed:', error);
+      if (placeSearchRequestRef.current === requestId) {
+        setPlaceResults([]);
+        setPlaceSearchError('ค้นหาสถานที่ไม่สำเร็จ');
+      }
+    } finally {
+      if (placeSearchRequestRef.current === requestId) {
+        setIsSearchingPlace(false);
+      }
+    }
+  };
+
+  const handleSelectPlace = (place: PlaceSearchResult) => {
+    const lat = Number(place.lat);
+    const lng = Number(place.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const coords = L.latLng(lat, lng);
+    const label = getPlaceLabel(place);
+    setInspectCoords(coords);
+    setSelectedPlaceName(label);
+    setPlaceQuery(label);
+    setPlaceResults([]);
+    setPlaceSearchError(null);
+    setAnalyzeResults(null);
+    setAnalyzeError(null);
+    mapRef.current?.setView(coords, 16);
+    setMessage(`กำหนดจุดวิเคราะห์: ${label}`);
+  };
+
+  const handleClearAnalysisPoint = () => {
+    setInspectCoords(null);
+    setSelectedPlaceName('');
+    setAnalyzeResults(null);
+    setAnalyzeError(null);
+    setPlaceSearchError(null);
+    setMessage('เลือกสถานที่หรือคลิกบนแผนที่เพื่อเริ่มวิเคราะห์การเข้าถึง');
   };
 
   return (
@@ -1112,21 +1247,65 @@ function App() {
               ) : (
                 <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: '#d97706', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, marginTop: '8px' }}>
                   <Database size={16} />
-                  <span>PostGIS ออฟไลน์ - ใช้ระบบประมวลผลสำรอง (JS Fallback)</span>
+                  <span>PostGIS ออฟไลน์ - ใช้โครงข่ายถนนจาก ArcGIS + JS Dijkstra</span>
                 </div>
               )}
 
               <div className="section-header" style={{ marginTop: '18px' }}>
-                <h2>1. เลือกจุดบริการบนแผนที่</h2>
+                <h2>1. ค้นหาหรือกำหนดจุด</h2>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', padding: '12px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)', borderRadius: '8px' }}>
-                <MapPin size={20} style={{ color: inspectCoords ? '#ef4444' : '#64748b' }} />
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>ตำแหน่งปักหมุด</span>
-                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: basemapMode === 'dark' ? '#f8fafc' : '#0f172a' }}>
-                    {inspectCoords ? `${inspectCoords.lat.toFixed(6)}, ${inspectCoords.lng.toFixed(6)}` : 'คลิกบนแผนที่เพื่อปักหมุด 📍'}
-                  </span>
+              <form className="place-search-form" onSubmit={handlePlaceSearch}>
+                <div className="place-search-input-wrap">
+                  <Search size={16} />
+                  <input
+                    type="search"
+                    placeholder="ค้นหาสถานที่ในกรุงเทพฯ"
+                    value={placeQuery}
+                    onChange={(event) => setPlaceQuery(event.target.value)}
+                  />
                 </div>
+                <button type="submit" disabled={isSearchingPlace}>
+                  {isSearchingPlace ? <Loader2 className="spin" size={15} /> : <Search size={15} />}
+                  <span>{isSearchingPlace ? 'ค้นหา...' : 'ค้นหา'}</span>
+                </button>
+              </form>
+
+              {placeSearchError && <p className="place-search-error">{placeSearchError}</p>}
+
+              {placeResults.length > 0 && (
+                <div className="place-results-list">
+                  {placeResults.map((place) => (
+                    <button
+                      key={place.place_id}
+                      type="button"
+                      className="place-result-item"
+                      onClick={() => handleSelectPlace(place)}
+                    >
+                      <MapPin size={15} />
+                      <span>{getPlaceLabel(place)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className={`selected-point-card ${inspectCoords ? 'has-point' : ''}`}>
+                <MapPin size={20} />
+                <div>
+                  <span>จุดวิเคราะห์</span>
+                  <strong>
+                    {inspectCoords
+                      ? selectedPlaceName || `${inspectCoords.lat.toFixed(6)}, ${inspectCoords.lng.toFixed(6)}`
+                      : 'ค้นหาสถานที่หรือคลิกบนแผนที่'}
+                  </strong>
+                  {inspectCoords && (
+                    <small>{inspectCoords.lat.toFixed(6)}, {inspectCoords.lng.toFixed(6)}</small>
+                  )}
+                </div>
+                {inspectCoords && (
+                  <button type="button" onClick={handleClearAnalysisPoint}>
+                    ล้าง
+                  </button>
+                )}
               </div>
 
               <div className="section-header" style={{ marginTop: '18px' }}>
@@ -1172,7 +1351,7 @@ function App() {
                     </h2>
                   </div>
                   <strong style={{ background: '#7c3aed22', color: '#a78bfa', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>
-                    {analyzeResults.cacheHit ? 'Cache' : analyzeResults.engine === 'postgis-pgrouting' ? 'pgRouting' : 'JS Fallback'}
+                    {getAnalysisEngineLabel(analyzeResults)}
                   </strong>
                 </div>
 
@@ -1204,8 +1383,8 @@ function App() {
                   <h2>🗺️ เขตที่พื้นที่พาดผ่าน ({analyzeResults.intersectingDistricts.length})</h2>
                 </div>
                 <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px', paddingRight: '4px' }}>
-                  {analyzeResults.intersectingDistricts.map((d: any) => (
-                    <div key={d.id} style={{ fontSize: '0.78rem', padding: '6px 10px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '4px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
+                  {analyzeResults.intersectingDistricts.map((d: any, index: number) => (
+                    <div key={`${d.id ?? 'district'}-${d.name}-${index}`} style={{ fontSize: '0.78rem', padding: '6px 10px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '4px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
                       เขต{d.name}
                     </div>
                   ))}

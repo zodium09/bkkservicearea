@@ -2259,6 +2259,189 @@ h2 {
   cursor: not-allowed;
 }
 
+.place-search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.place-search-input-wrap {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #64748b;
+}
+
+.place-search-input-wrap input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.place-search-form button,
+.selected-point-card button,
+.place-result-item {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.place-search-form button {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #0f766e;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.place-search-form button:disabled {
+  background: #64748b;
+  cursor: wait;
+}
+
+.place-search-error {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.place-results-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.place-result-item {
+  min-width: 0;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.place-result-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.place-result-item:hover {
+  background: rgba(15, 118, 110, 0.14);
+}
+
+.selected-point-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.03);
+  color: #64748b;
+}
+
+.selected-point-card.has-point {
+  border-color: rgba(15, 118, 110, 0.34);
+  background: rgba(15, 118, 110, 0.08);
+  color: #0f766e;
+}
+
+.selected-point-card div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selected-point-card span,
+.selected-point-card small {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.selected-point-card strong {
+  min-width: 0;
+  color: #0f172a;
+  font-size: 0.84rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-point-card button {
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.is-dark-map .place-search-input-wrap {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+  color: #94a3b8;
+}
+
+.is-dark-map .place-search-input-wrap input,
+.is-dark-map .place-result-item,
+.is-dark-map .selected-point-card strong {
+  color: #f8fafc;
+}
+
+.is-dark-map .place-result-item {
+  background: rgba(20, 184, 166, 0.11);
+}
+
+.is-dark-map .place-result-item:hover {
+  background: rgba(20, 184, 166, 0.18);
+}
+
+.is-dark-map .selected-point-card {
+  border-color: rgba(148, 163, 184, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.is-dark-map .selected-point-card.has-point {
+  border-color: rgba(20, 184, 166, 0.32);
+  background: rgba(20, 184, 166, 0.1);
+}
+
 .layer-row {
   display: flex;
   align-items: center;

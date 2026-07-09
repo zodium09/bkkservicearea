@@ -9,18 +9,24 @@ export function ResultSummary({ result }: ResultSummaryProps) {
   if (!stats) return null;
 
   const limitLabel = stats.costType === 'time'
-    ? `${Math.round(stats.limit / 60)} min`
-    : `${stats.limit.toLocaleString()} m`;
+    ? `${Math.round(stats.limit / 60)} นาที`
+    : `${stats.limit.toLocaleString()} เมตร`;
   const isApproximate = result.analysisQuality === 'approximate';
+  const engineLabel = result.engine === 'postgis-pgrouting'
+    ? 'PostGIS + pgRouting'
+    : result.engine === 'js-dijkstra-fallback'
+      ? 'โครงข่ายถนน JS Dijkstra'
+      : 'รัศมีประมาณการ';
+  const modeLabel = stats.mode === 'walk' ? 'เดิน' : stats.mode === 'bike' ? 'จักรยาน' : 'รถยนต์';
 
   return (
     <div className={`result-summary ${isApproximate ? 'is-approximate' : ''}`}>
       <span>
-        Service area within {limitLabel} · Mode: {stats.mode} · Engine: {result.engine}
+        พื้นที่เข้าถึงภายใน {limitLabel} · โหมด: {modeLabel} · Engine: {engineLabel}
       </span>
       {isApproximate && (
         <span className="analysis-warning">
-          Approximate fallback: road network data was unavailable, so this result uses a straight-line service radius.
+          ใช้ผลประมาณการแบบรัศมี เพราะไม่สามารถโหลดโครงข่ายถนนได้ในขณะนี้
         </span>
       )}
     </div>

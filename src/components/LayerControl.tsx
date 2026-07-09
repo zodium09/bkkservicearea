@@ -4,12 +4,10 @@ interface LayerControlProps {
 }
 
 const ANALYSIS_LAYERS = [
-  ['serviceArea', 'Service Area Polygon'],
-  ['reachableRoads', 'Reachable Roads'],
-  ['startPoint', 'Start Point'],
-  ['snappedNode', 'Snapped Node'],
-  ['barriers', 'Barriers'],
-  ['onewayRoads', 'One-way Roads'],
+  ['startPoint', 'จุดเริ่มต้น'],
+  ['serviceArea', 'พื้นที่เข้าถึง'],
+  ['reachableRoads', 'ถนนที่เข้าถึงได้'],
+  ['snappedNode', 'จุดที่ระบบจับเข้าถนน'],
 ] as const;
 
 export function LayerControl({ layers, onChange }: LayerControlProps) {

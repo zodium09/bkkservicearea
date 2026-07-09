@@ -28,6 +28,6 @@ When PostGIS/pgRouting is unavailable, `/api/analyze` first tries the local proc
 
 - `FALLBACK_ROAD_LAYER_MAX_BYTES`: maximum local road GeoJSON size for JS Dijkstra fallback. Default: 25 MB.
 - `ENABLE_LARGE_LOCAL_ROADS=true`: allow JS fallback to parse large local road files.
-- `ENABLE_ARCGIS_ROAD_FALLBACK=true`: allow live ArcGIS road queries when no usable local road layer exists.
+- `ENABLE_ARCGIS_ROAD_FALLBACK=false`: disable live ArcGIS road queries. Live road queries are enabled by default so hosted deployments still analyze along road corridors when PostGIS is offline.
 
 If no usable road network is available, the API returns a `straight-line-fallback` response with `analysisQuality: "approximate"` and a valid GeoJSON service area so the custom point workflow still completes.

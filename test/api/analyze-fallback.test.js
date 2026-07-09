@@ -38,3 +38,51 @@ test('fallback analysis returns an approximate GeoJSON service area when roads a
     network.findQgisProcess = originalFindQgis;
   }
 });
+
+test('fallback analysis uses road network when road features are available', async () => {
+  const originalLoadRoads = network.loadRoadsForFacilities;
+  const originalLoadDistricts = network.loadDistricts;
+  const originalFindQgis = network.findQgisProcess;
+
+  network.loadRoadsForFacilities = async () => ({
+    type: 'FeatureCollection',
+    features: [
+      turfLine([[100.5000, 13.7500], [100.5050, 13.7500]], 1),
+      turfLine([[100.5050, 13.7500], [100.5100, 13.7500]], 2),
+      turfLine([[100.5050, 13.7450], [100.5050, 13.7500], [100.5050, 13.7550]], 3),
+    ],
+  });
+  network.loadDistricts = async () => ({ type: 'FeatureCollection', features: [] });
+  network.findQgisProcess = async () => ({ found: false, command: null, version: null });
+
+  try {
+    const request = normalizeAnalyzeRequest({
+      lat: 13.7500,
+      lng: 100.5050,
+      mode: 'walk',
+      costType: 'time',
+      limit: 900,
+    });
+    const result = await routing.analyzeFallback(request);
+
+    assert.equal(result.engine, 'js-dijkstra-fallback');
+    assert.equal(result.analysisQuality, 'network');
+    assert.equal(result.reachableRoads.type, 'FeatureCollection');
+    assert.ok(result.reachableRoads.features.length > 0);
+    assert.ok(result.metrics.reachedRoadLengthKm > 0);
+    assert.equal(result.serviceArea.features[0].properties.method, 'network-road-corridor');
+  } finally {
+    network.loadRoadsForFacilities = originalLoadRoads;
+    network.loadDistricts = originalLoadDistricts;
+    network.findQgisProcess = originalFindQgis;
+  }
+});
+
+function turfLine(coordinates, id) {
+  return {
+    type: 'Feature',
+    id,
+    properties: { OBJECTID: id, ROAD_NAME_T: `ถนนทดสอบ ${id}` },
+    geometry: { type: 'LineString', coordinates },
+  };
+}

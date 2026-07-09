@@ -59,7 +59,7 @@ export function AnalyzePanel(props: AnalyzePanelProps) {
 
       <button onClick={props.onAnalyze} disabled={props.loading || props.disabled} className="primary-action" type="button">
         <Sliders size={18} />
-        <span>{props.loading ? 'กำลังวิเคราะห์...' : 'วิเคราะห์พื้นที่บริการ'}</span>
+        <span>{props.loading ? 'กำลังวิเคราะห์...' : props.disabled ? 'เลือกจุดก่อนวิเคราะห์' : 'วิเคราะห์พื้นที่บริการ'}</span>
       </button>
     </>
   );

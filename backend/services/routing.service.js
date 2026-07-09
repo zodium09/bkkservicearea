@@ -138,11 +138,39 @@ function buildNetworkServiceArea(graph, distances, request) {
 
   let serviceArea = null;
   if (reachableLines.features.length) {
-    serviceArea = turf.buffer(reachableLines, modeBufferMeters(request.mode) / 1000, { units: 'kilometers' });
+    const bufferKm = modeBufferMeters(request.mode) / 1000;
+    const corridorEdgeLimit = Number(process.env.FALLBACK_CORRIDOR_BUFFER_EDGE_LIMIT) || 1800;
+    if (reachableEdges.length <= corridorEdgeLimit) {
+      const reachableRoadGeometry = turf.multiLineString(
+        reachableEdges.map((edge) => edge.coordinates),
+        { sourceFeatureCount: reachableEdges.length },
+      );
+      serviceArea = turf.buffer(reachableRoadGeometry, bufferKm, { units: 'kilometers' });
+      serviceArea.properties = {
+        ...(serviceArea.properties || {}),
+        method: 'network-road-corridor',
+      };
+    } else {
+      const maxEdgeKm = Math.max(bufferKm * 6, Math.min(request.distanceMeters / 1000 / 4, 0.45));
+      const reachableNodeCollection = turf.featureCollection(nodePoints);
+      const hull = turf.concave(reachableNodeCollection, { maxEdge: maxEdgeKm, units: 'kilometers' })
+        || turf.convex(reachableNodeCollection);
+      serviceArea = hull ? turf.buffer(hull, bufferKm, { units: 'kilometers' }) : null;
+      if (serviceArea) {
+        serviceArea.properties = {
+          ...(serviceArea.properties || {}),
+          method: 'network-reach-hull',
+          optimizedForLargeNetwork: true,
+          maxEdgeKm,
+        };
+      }
+    }
+  }
+  if (serviceArea) {
     serviceArea.properties = {
       ...(serviceArea.properties || {}),
-      method: 'network-road-corridor',
       bufferMeters: modeBufferMeters(request.mode),
+      reachableEdgeCount: reachableEdges.length,
     };
   }
   const areaSqKm = serviceArea ? turf.area(serviceArea) / 1000000 : 0;
@@ -234,7 +262,7 @@ function pointCollections(facilities, snappedFacilities) {
 async function analyzeFallback(request) {
   let roads;
   let approximateReason = null;
-  const canUseLiveArcgisRoads = process.env.ENABLE_ARCGIS_ROAD_FALLBACK === 'true';
+  const canUseLiveArcgisRoads = process.env.ENABLE_ARCGIS_ROAD_FALLBACK !== 'false';
   const canUseLargeLocalRoads = process.env.ENABLE_LARGE_LOCAL_ROADS === 'true';
   const roadLayerMaxBytes = Number(process.env.FALLBACK_ROAD_LAYER_MAX_BYTES) || 25 * 1024 * 1024;
   const hasUsableLocalRoads = canUseLargeLocalRoads || network.isProcessedLayerSmallEnough(network.ROAD_LAYER_ID, roadLayerMaxBytes);
