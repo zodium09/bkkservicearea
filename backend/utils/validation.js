@@ -35,7 +35,7 @@ function normalizeAnalyzeRequest(body) {
   const mode = MODES.has(body.mode) ? body.mode : 'walk';
   const costType = COST_TYPES.has(body.costType) ? body.costType : (body.distanceMeters ? 'distance' : 'time');
   const travelMinutes = Math.max(1, Math.min(Number(body.travelMinutes) || 15, 60));
-  const speedKmh = Math.max(1, Math.min(Number(body.speedKmh) || (mode === 'drive' ? 25 : mode === 'bike' ? 15 : 5), 120));
+  const speedKmh = Math.max(1, Math.min(Number(body.speedKmh) || (mode === 'drive' ? 30 : mode === 'bike' ? 15 : 5), 120));
 
   let limit = Number(body.limit);
   if (!Number.isFinite(limit) || limit <= 0) {

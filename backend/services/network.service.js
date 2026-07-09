@@ -198,16 +198,17 @@ async function loadDistricts() {
 }
 
 async function loadRoadsForFacility(facility, distanceMeters) {
-  const searchKm = Math.min(Math.max(distanceMeters / 1000 + 0.25, 0.8), 3.5);
+  const maxSearchKm = Number(process.env.FALLBACK_ROAD_SEARCH_MAX_KM) || 8.5;
+  const searchKm = Math.min(Math.max(distanceMeters / 1000 + 0.75, 0.8), maxSearchKm);
   const searchArea = turf.buffer(turf.point([facility.lng, facility.lat]), searchKm, { units: 'kilometers' });
   const [xmin, ymin, xmax, ymax] = turf.bbox(searchArea);
-  const maxFeatures = Number(process.env.FALLBACK_ROAD_MAX_FEATURES) || 2500;
+  const maxFeatures = Number(process.env.FALLBACK_ROAD_MAX_FEATURES) || 10000;
   const processed = queryProcessedLayerByBbox(ROAD_LAYER_ID, [xmin, ymin, xmax, ymax], maxFeatures);
   if (processed) return processed;
 
   const features = [];
   const pageSize = Number(process.env.ARCGIS_ROAD_PAGE_SIZE) || 750;
-  const maxPages = Number(process.env.ARCGIS_ROAD_MAX_PAGES) || 3;
+  const maxPages = Number(process.env.ARCGIS_ROAD_MAX_PAGES) || Math.ceil(maxFeatures / pageSize);
   for (let pageIndex = 0; pageIndex < maxPages && features.length < maxFeatures; pageIndex += 1) {
     const offset = pageIndex * pageSize;
     const params = new URLSearchParams({

@@ -78,6 +78,42 @@ test('fallback analysis uses road network when road features are available', asy
   }
 });
 
+test('fallback analysis connects roads that geometrically cross without shared vertices', async () => {
+  const originalLoadRoads = network.loadRoadsForFacilities;
+  const originalLoadDistricts = network.loadDistricts;
+  const originalFindQgis = network.findQgisProcess;
+
+  network.loadRoadsForFacilities = async () => ({
+    type: 'FeatureCollection',
+    features: [
+      turfLine([[100.5000, 13.7500], [100.5100, 13.7500]], 10),
+      turfLine([[100.5050, 13.7450], [100.5050, 13.7550]], 11),
+    ],
+  });
+  network.loadDistricts = async () => ({ type: 'FeatureCollection', features: [] });
+  network.findQgisProcess = async () => ({ found: false, command: null, version: null });
+
+  try {
+    const request = normalizeAnalyzeRequest({
+      lat: 13.7500,
+      lng: 100.5000,
+      mode: 'walk',
+      costType: 'time',
+      limit: 900,
+    });
+    const result = await routing.analyzeFallback(request);
+
+    assert.equal(result.engine, 'js-dijkstra-fallback');
+    assert.ok(result.metrics.networkNodesReached > 4);
+    assert.ok(result.metrics.reachedRoadLengthKm > 1.5);
+    assert.ok(result.metrics.fallbackTopology.nodedIntersectionCount >= 1);
+  } finally {
+    network.loadRoadsForFacilities = originalLoadRoads;
+    network.loadDistricts = originalLoadDistricts;
+    network.findQgisProcess = originalFindQgis;
+  }
+});
+
 function turfLine(coordinates, id) {
   return {
     type: 'Feature',

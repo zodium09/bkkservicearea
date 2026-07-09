@@ -12,6 +12,9 @@ export function ResultSummary({ result }: ResultSummaryProps) {
     ? `${Math.round(stats.limit / 60)} นาที`
     : `${stats.limit.toLocaleString()} เมตร`;
   const isApproximate = result.analysisQuality === 'approximate';
+  const isJsFallback = result.engine === 'js-dijkstra-fallback';
+  const topology = result.metrics?.fallbackTopology;
+  const usesVirtualConnectors = Number(topology?.virtualConnectorCount || 0) > 0;
   const engineLabel = result.engine === 'postgis-pgrouting'
     ? 'PostGIS + pgRouting'
     : result.engine === 'js-dijkstra-fallback'
@@ -27,6 +30,12 @@ export function ResultSummary({ result }: ResultSummaryProps) {
       {isApproximate && (
         <span className="analysis-warning">
           ใช้ผลประมาณการแบบรัศมี เพราะไม่สามารถโหลดโครงข่ายถนนได้ในขณะนี้
+        </span>
+      )}
+      {isJsFallback && (
+        <span className="analysis-warning">
+          ใช้โครงข่าย fallback จาก ArcGIS + JS Dijkstra ผลใกล้เคียงการหา service area แต่ยังไม่ละเอียดเท่า Google Maps/pgRouting
+          {usesVirtualConnectors ? ' และมีการเชื่อม component ถนนใกล้เคียงเพื่อแก้กราฟขาด' : ''}
         </span>
       )}
     </div>
