@@ -924,7 +924,7 @@ function App() {
               <div className="webmap-layer-panel">
                 <div className="webmap-panel-header">
                   <div>
-                    <span>{activeTab === 'dashboard' ? 'Service Layers' : 'Analysis Layers'}</span>
+                    <span>Map Layers</span>
                     <h2>{activeTab === 'dashboard' ? 'ชั้นข้อมูลบริการ' : 'ชั้นข้อมูลผลวิเคราะห์'}</h2>
                   </div>
                   <button type="button" onClick={() => setIsLayerPanelOpen(false)} title="ปิดแผงชั้นข้อมูล">

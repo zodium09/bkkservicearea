@@ -12,7 +12,7 @@ const ANALYSIS_LAYERS = [
 
 export function LayerControl({ layers, onChange }: LayerControlProps) {
   return (
-    <div style={{ display: 'grid', gap: '6px' }}>
+    <div className="analysis-layer-list">
       {ANALYSIS_LAYERS.map(([key, label]) => (
         <label key={key} className="layer-row">
           <input
