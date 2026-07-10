@@ -247,7 +247,66 @@ function annotateConnectedComponents(graph) {
   }
 }
 
+function buildCompactRoadGraph(roads, request) {
+  const graph = { nodes: new Map(), edges: [], topology: {} };
+  const modeSpeed = request.speedKmh || (request.mode === 'drive' ? 30 : request.mode === 'bike' ? 15 : 5);
+  const project = projectionFor(roads);
+  let inputSegmentCount = 0;
+
+  for (const feature of roads.features || []) {
+    for (const coordinates of eachLineCoords(feature)) {
+      if (!Array.isArray(coordinates) || coordinates.length < 2) continue;
+      const start = coordinates[0];
+      const end = coordinates[coordinates.length - 1];
+      const a = addNode(graph, start);
+      const b = addNode(graph, end);
+      if (a.key === b.key) continue;
+      let lengthMeters = 0;
+      for (let index = 0; index < coordinates.length - 1; index += 1) {
+        const from = project.toXY(coordinates[index]);
+        const to = project.toXY(coordinates[index + 1]);
+        lengthMeters += Math.hypot(to.x - from.x, to.y - from.y);
+      }
+      if (!Number.isFinite(lengthMeters) || lengthMeters <= 0) continue;
+      const cost = request.costType === 'time' ? lengthMeters / (modeSpeed * 1000 / 3600) : lengthMeters;
+      const edge = {
+        id: String(feature.id || feature.properties?.OBJECTID || `compact-${inputSegmentCount}`),
+        a: a.key,
+        b: b.key,
+        lengthMeters,
+        cost,
+        coordinates,
+        properties: feature.properties || {},
+      };
+      graph.edges.push(edge);
+      a.edges.push({ to: b.key, edge });
+      b.edges.push({ to: a.key, edge });
+      inputSegmentCount += 1;
+    }
+  }
+
+  const nearNodeConnectorCount = connectNearbyNodes(graph, project, request);
+  annotateConnectedComponents(graph);
+  const largestComponentSize = Array.from(graph.nodes.values())
+    .reduce((largest, node) => Math.max(largest, node.componentSize || 0), 0);
+  graph.topology = {
+    inputFeatureCount: roads.features?.length || 0,
+    inputSegmentCount,
+    nodedIntersectionCount: 0,
+    nearNodeConnectorCount,
+    componentCount: new Set(Array.from(graph.nodes.values()).map((node) => node.componentId)).size,
+    largestComponentSize,
+    connectorToleranceMeters: Number(process.env.FALLBACK_TOPOLOGY_CONNECTOR_TOLERANCE_M) || 20,
+    intersectionNodingSkipped: true,
+    compactPreprocessedNetwork: true,
+  };
+  return graph;
+}
+
 function buildRoadGraph(roads, request) {
+  if (roads.features?.some((feature) => feature.properties?.compactNetwork)) {
+    return buildCompactRoadGraph(roads, request);
+  }
   const graph = { nodes: new Map(), edges: [], topology: {} };
   const modeSpeed = request.speedKmh || (request.mode === 'drive' ? 30 : request.mode === 'bike' ? 15 : 5);
   const project = projectionFor(roads);
@@ -449,24 +508,38 @@ function modeBufferMeters(mode) {
 function buildNetworkServiceArea(graph, distances, request) {
   const reachableEdges = graph.edges.filter((edge) => distances.has(edge.a) && distances.has(edge.b));
   const reachedRoadEdges = reachableEdges.filter((edge) => !edge.properties?.generated);
-  const reachableLines = turf.featureCollection(reachableEdges.map((edge) =>
-    turf.lineString(edge.coordinates, {
-      ...edge.properties,
-      lengthMeters: Number(edge.lengthMeters.toFixed(2)),
-      fromCost: Number(distances.get(edge.a).toFixed(2)),
-      toCost: Number(distances.get(edge.b).toFixed(2)),
-    }),
-  ));
-  const nodePoints = Array.from(distances.entries()).map(([key, cost]) =>
+  const responseRoadLimit = Number(process.env.NETWORK_RESPONSE_ROAD_LIMIT) || 12000;
+  const responseEdges = reachedRoadEdges.length <= responseRoadLimit
+    ? reachedRoadEdges
+    : reachedRoadEdges.filter((_edge, index) => index % Math.ceil(reachedRoadEdges.length / responseRoadLimit) === 0);
+  const reachableLines = responseEdges.length
+    ? turf.featureCollection([turf.multiLineString(
+        responseEdges.map((edge) => [edge.coordinates[0], edge.coordinates[edge.coordinates.length - 1]]),
+        {
+          reachableEdgeCount: reachedRoadEdges.length,
+          displayedEdgeCount: responseEdges.length,
+          networkDerived: true,
+        },
+      )])
+    : turf.featureCollection([]);
+  const allNodePoints = Array.from(distances.entries()).map(([key, cost]) =>
     turf.point(graph.nodes.get(key).coord, { cost: Number(cost.toFixed(2)) }),
   );
+  const hullNodeLimit = Number(process.env.NETWORK_HULL_NODE_LIMIT) || 2500;
+  const hullNodePoints = allNodePoints.length <= hullNodeLimit
+    ? allNodePoints
+    : allNodePoints.filter((_point, index) => index % Math.ceil(allNodePoints.length / hullNodeLimit) === 0);
+  const responseNodeLimit = Number(process.env.NETWORK_RESPONSE_NODE_LIMIT) || 500;
+  const responseNodePoints = allNodePoints.length <= responseNodeLimit
+    ? allNodePoints
+    : allNodePoints.filter((_point, index) => index % Math.ceil(allNodePoints.length / responseNodeLimit) === 0);
 
   let serviceArea = null;
   if (reachableLines.features.length) {
     const bufferKm = modeBufferMeters(request.mode) / 1000;
     const corridorEdgeLimit = Number(process.env.FALLBACK_CORRIDOR_BUFFER_EDGE_LIMIT) || 1800;
     const shouldPreferReachHull = ['bike', 'drive'].includes(request.mode)
-      && nodePoints.length >= (Number(process.env.FALLBACK_DRIVE_HULL_MIN_NODES) || 30);
+      && allNodePoints.length >= (Number(process.env.FALLBACK_DRIVE_HULL_MIN_NODES) || 30);
 
     if (shouldPreferReachHull || reachableEdges.length > corridorEdgeLimit) {
       const maxEdgeKm = request.mode === 'drive'
@@ -474,7 +547,7 @@ function buildNetworkServiceArea(graph, distances, request) {
         : request.mode === 'bike'
           ? Math.max(bufferKm * 6, Math.min(request.distanceMeters / 1000 / 2, 1.5))
         : Math.max(bufferKm * 6, Math.min(request.distanceMeters / 1000 / 4, 0.45));
-      const reachableNodeCollection = turf.featureCollection(nodePoints);
+      const reachableNodeCollection = turf.featureCollection(hullNodePoints);
       const hull = turf.concave(reachableNodeCollection, { maxEdge: maxEdgeKm, units: 'kilometers' })
         || turf.convex(reachableNodeCollection);
       serviceArea = hull ? turf.buffer(hull, bufferKm, { units: 'kilometers' }) : null;
@@ -513,7 +586,7 @@ function buildNetworkServiceArea(graph, distances, request) {
   return {
     reachableRoads: reachableLines,
     serviceArea: serviceArea ? turf.featureCollection([serviceArea]) : turf.featureCollection([]),
-    networkNodes: turf.featureCollection(nodePoints),
+    networkNodes: turf.featureCollection(responseNodePoints),
     reachedRoadLengthKm: reachedRoadEdges.reduce((sum, edge) => sum + edge.lengthMeters, 0) / 1000,
     areaSqKm,
   };
@@ -594,20 +667,23 @@ function pointCollections(facilities, snappedFacilities) {
   };
 }
 
-async function analyzeFallback(request) {
+async function loadFallbackRoads(request) {
   let roads;
-  let approximateReason = null;
+  let unavailableReason = null;
   const canUseLiveArcgisRoads = process.env.ENABLE_ARCGIS_ROAD_FALLBACK !== 'false';
   const canUseLargeLocalRoads = process.env.ENABLE_LARGE_LOCAL_ROADS === 'true';
   const roadLayerMaxBytes = Number(process.env.FALLBACK_ROAD_LAYER_MAX_BYTES) || 25 * 1024 * 1024;
-  const hasUsableLocalRoads = canUseLargeLocalRoads || network.isProcessedLayerSmallEnough(network.ROAD_LAYER_ID, roadLayerMaxBytes);
+  const hasCompactRoads = Boolean(network.loadCompactRoadManifest());
+  const hasUsableLocalRoads = hasCompactRoads
+    || canUseLargeLocalRoads
+    || network.isProcessedLayerSmallEnough(network.ROAD_LAYER_ID, roadLayerMaxBytes);
   if (!hasUsableLocalRoads && !canUseLiveArcgisRoads) {
-    approximateReason = network.hasProcessedLayer(network.ROAD_LAYER_ID)
+    unavailableReason = network.hasProcessedLayer(network.ROAD_LAYER_ID)
       ? 'Local road layer is too large for interactive fallback. Enable large local roads or use PostGIS/pgRouting for network analysis.'
       : 'Local road layer is not available and live ArcGIS road fallback is disabled.';
   }
   try {
-    if (!approximateReason) {
+    if (!unavailableReason) {
       roads = await Promise.race([
         network.loadRoadsForFacilities(request.facilities, request.distanceMeters),
         new Promise((_, reject) => {
@@ -616,44 +692,36 @@ async function analyzeFallback(request) {
       ]);
     }
   } catch (error) {
-    approximateReason = error.message || 'Road network fallback failed.';
+    unavailableReason = error.message || 'Road network fallback failed.';
   }
-  if (approximateReason || !roads?.features?.length) {
-    const networkArea = buildApproximateServiceArea(request, approximateReason || 'No road features were available near the selected point.');
-    const districts = await intersectingDistricts(networkArea.serviceArea);
-    const points = pointCollections(request.facilities, networkArea.snappedFacilities);
-    const qgis = { found: false, command: null, version: null, skipped: true };
-    return formatResponse({
-      engine: 'straight-line-fallback',
-      request,
-      qgis,
-      points,
-      snappedFacilities: networkArea.snappedFacilities,
-      networkNodes: networkArea.networkNodes,
-      reachableRoads: networkArea.reachableRoads,
-      serviceArea: networkArea.serviceArea,
-      intersectingDistricts: districts,
-      areaSqKm: networkArea.areaSqKm,
-      reachedRoadLengthKm: networkArea.reachedRoadLengthKm,
-      roadFeaturesLoaded: roads?.features?.length || 0,
-      networkNodesReached: networkArea.networkNodes.features.length,
-      fallbackReason: networkArea.serviceArea.features[0].properties.reason,
-      analysisQuality: 'approximate',
-    });
-  }
-  const graph = buildRoadGraph(roads, request);
+  return {
+    roads,
+    unavailableReason: unavailableReason || (!roads?.features?.length ? 'No road features were available near the selected point.' : null),
+  };
+}
+
+function networkUnavailableError(reason) {
+  const error = new Error(reason || 'Road network is unavailable.');
+  error.status = 503;
+  error.code = 'ROAD_NETWORK_UNAVAILABLE';
+  return error;
+}
+
+async function analyzeRequestsOnRoadGraph(requests, roads) {
+  const maxRequest = [...requests].sort((left, right) => right.limit - left.limit)[0];
+  const graph = buildRoadGraph(roads, maxRequest);
   const snappedFacilities = [];
   const sourceKeys = [];
   let virtualConnectorCount = 0;
-  for (const facility of request.facilities) {
-    const nearest = nearestRoadNode(graph, facility, request);
+  for (const facility of maxRequest.facilities) {
+    const nearest = nearestRoadNode(graph, facility, maxRequest);
     if (nearest && nearest.distanceMeters <= 1500) {
       for (const candidate of nearest.connectedCandidates || []) {
         const connector = addVirtualConnector(
           graph,
           nearest.nodeKey,
           candidate.nodeKey,
-          request,
+          maxRequest,
           'nearest-road-component-was-too-small',
         );
         if (connector) virtualConnectorCount += 1;
@@ -668,28 +736,72 @@ async function analyzeFallback(request) {
     throw error;
   }
 
-  const distances = dijkstra(graph, sourceKeys, request.limit);
-  const networkArea = buildNetworkServiceArea(graph, distances, request);
-  const districts = await intersectingDistricts(networkArea.serviceArea);
-  const points = pointCollections(request.facilities, snappedFacilities);
+  const maxDistances = dijkstra(graph, sourceKeys, maxRequest.limit);
   const qgis = await network.findQgisProcess();
-  return formatResponse({
-    engine: 'js-dijkstra-fallback',
-    request,
-    qgis,
-    points,
-    snappedFacilities,
-    networkNodes: networkArea.networkNodes,
-    reachableRoads: networkArea.reachableRoads,
-    serviceArea: networkArea.serviceArea,
-    intersectingDistricts: districts,
-    areaSqKm: networkArea.areaSqKm,
-    reachedRoadLengthKm: networkArea.reachedRoadLengthKm,
-    roadFeaturesLoaded: roads.features.length,
-    networkNodesReached: distances.size,
-    fallbackTopology: { ...graph.topology, virtualConnectorCount },
-    analysisQuality: 'network',
-  });
+  return Promise.all(requests.map(async (request) => {
+    const distances = request.limit === maxRequest.limit
+      ? maxDistances
+      : new Map(Array.from(maxDistances.entries()).filter(([, cost]) => cost <= request.limit));
+    const networkArea = buildNetworkServiceArea(graph, distances, request);
+    if (!networkArea.serviceArea.features.length || !networkArea.reachableRoads.features.length) {
+      throw networkUnavailableError('No reachable road segments were found for the selected point.');
+    }
+    const districts = await intersectingDistricts(networkArea.serviceArea);
+    const points = pointCollections(request.facilities, snappedFacilities);
+    return formatResponse({
+      engine: 'js-dijkstra-network',
+      request,
+      qgis,
+      points,
+      snappedFacilities,
+      networkNodes: networkArea.networkNodes,
+      reachableRoads: networkArea.reachableRoads,
+      serviceArea: networkArea.serviceArea,
+      intersectingDistricts: districts,
+      areaSqKm: networkArea.areaSqKm,
+      reachedRoadLengthKm: networkArea.reachedRoadLengthKm,
+      roadFeaturesLoaded: roads.features.length,
+      networkNodesReached: distances.size,
+      fallbackTopology: { ...graph.topology, virtualConnectorCount },
+      analysisQuality: 'network',
+    });
+  }));
+}
+
+async function analyzeFallback(request) {
+  const { roads, unavailableReason } = await loadFallbackRoads(request);
+  if (unavailableReason || !roads?.features?.length) {
+    if (process.env.ALLOW_APPROXIMATE_SERVICE_AREA === 'true') {
+      const networkArea = buildApproximateServiceArea(request, unavailableReason);
+      const districts = await intersectingDistricts(networkArea.serviceArea);
+      const points = pointCollections(request.facilities, networkArea.snappedFacilities);
+      return formatResponse({
+        engine: 'straight-line-fallback', request,
+        qgis: { found: false, command: null, version: null, skipped: true },
+        points,
+        snappedFacilities: networkArea.snappedFacilities,
+        networkNodes: networkArea.networkNodes,
+        reachableRoads: networkArea.reachableRoads,
+        serviceArea: networkArea.serviceArea,
+        intersectingDistricts: districts,
+        areaSqKm: networkArea.areaSqKm,
+        reachedRoadLengthKm: 0,
+        roadFeaturesLoaded: 0,
+        networkNodesReached: 1,
+        fallbackReason: unavailableReason,
+        analysisQuality: 'approximate',
+      });
+    }
+    throw networkUnavailableError(unavailableReason);
+  }
+  return (await analyzeRequestsOnRoadGraph([request], roads))[0];
+}
+
+async function analyzeFallbackContours(requests) {
+  const maxRequest = [...requests].sort((left, right) => right.distanceMeters - left.distanceMeters)[0];
+  const { roads, unavailableReason } = await loadFallbackRoads(maxRequest);
+  if (unavailableReason || !roads?.features?.length) throw networkUnavailableError(unavailableReason);
+  return analyzeRequestsOnRoadGraph(requests, roads);
 }
 
 function formatResponse(context) {
@@ -923,4 +1035,4 @@ async function analyzeWithPgRouting(db, request) {
   return response;
 }
 
-module.exports = { analyzeFallback, analyzeWithPgRouting, modeBufferMeters };
+module.exports = { analyzeFallback, analyzeFallbackContours, analyzeWithPgRouting, modeBufferMeters };

@@ -3,6 +3,7 @@ const http = require('node:http');
 const test = require('node:test');
 
 const vercelHandler = require('../../api/index');
+const routing = require('../../backend/services/routing.service');
 
 test('Vercel API entry forwards rewritten paths to the Express router', async (t) => {
   const server = http.createServer((req, res) => {
@@ -22,8 +23,15 @@ test('Vercel API entry forwards rewritten paths to the Express router', async (t
   assert.equal(body.available, false);
   assert.match(body.viewerUrl, /^https:\/\//);
 
-  const previousArcgisFallback = process.env.ENABLE_ARCGIS_ROAD_FALLBACK;
-  process.env.ENABLE_ARCGIS_ROAD_FALLBACK = 'false';
+  const originalFallbackContours = routing.analyzeFallbackContours;
+  routing.analyzeFallbackContours = async (requests) => requests.map((request) => ({
+    engine: 'test-network',
+    analysisQuality: 'network',
+    metrics: { serviceAreaSqKm: request.limit / 600 },
+    serviceArea: { type: 'FeatureCollection', features: [] },
+    reachableRoads: { type: 'FeatureCollection', features: [] },
+    intersectingDistricts: [],
+  }));
   try {
     const analysisResponse = await fetch(`http://127.0.0.1:${port}/api/index?path=analyze/contours`, {
       method: 'POST',
@@ -42,7 +50,6 @@ test('Vercel API entry forwards rewritten paths to the Express router', async (t
     assert.deepEqual(analysis.contours.map((item) => item.minutes), [10, 15, 30]);
     assert.ok(analysis.contours.every((item) => item.result.serviceArea.type === 'FeatureCollection'));
   } finally {
-    if (previousArcgisFallback === undefined) delete process.env.ENABLE_ARCGIS_ROAD_FALLBACK;
-    else process.env.ENABLE_ARCGIS_ROAD_FALLBACK = previousArcgisFallback;
+    routing.analyzeFallbackContours = originalFallbackContours;
   }
 });

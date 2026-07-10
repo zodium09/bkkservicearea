@@ -64,11 +64,21 @@ router.post('/analyze/contours', async (req, res) => {
 
   try {
     const health = await db.checkHealth();
-    const contours = [];
-    for (const request of requests) {
-      const result = await executeAnalysis(request, health);
-      contours.push({ minutes: request.limit / 60, result });
+    let results;
+    if (!health.connected || !health.postgis || !health.pgrouting) {
+      results = await routing.analyzeFallbackContours(requests);
+    } else {
+      try {
+        results = await Promise.all(requests.map((request) => routing.analyzeWithPgRouting(db, request)));
+      } catch (error) {
+        if (error.status) throw error;
+        results = await routing.analyzeFallbackContours(requests);
+      }
     }
+    const contours = requests.map((request, index) => ({
+      minutes: request.limit / 60,
+      result: results[index],
+    }));
     return res.json({
       type: 'ServiceAreaContours',
       generatedAt: new Date().toISOString(),

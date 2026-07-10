@@ -182,6 +182,17 @@ const ACCESSIBILITY_GROUPS = [
   }
 ];
 
+const DEFAULT_ANALYSIS_PLACE_LAYERS = Object.fromEntries(
+  Object.keys(ACCESSIBILITY_PALETTE).map((category) => [
+    category,
+    ['bkk_hospitals', 'health_centers', 'transit_train', 'fire_stations'].includes(category),
+  ]),
+);
+
+function contourLayerKey(minutes: number): string {
+  return `contour_${minutes}`;
+}
+
 function escapeHtml(value: any): string {
   return String(value)
     .replaceAll('&', '&amp;')
@@ -309,12 +320,17 @@ function App() {
   const [analysisLayers, setAnalysisLayers] = useState<Record<string, boolean>>({
     serviceArea: true,
     reachableRoads: true,
-    nearbyPlaces: true,
     startPoint: true,
     snappedNode: false,
+    contour_10: false,
+    contour_15: true,
+    contour_30: false,
     barriers: false,
     onewayRoads: false,
   });
+  const [analysisPlaceLayers, setAnalysisPlaceLayers] = useState<Record<string, boolean>>(
+    DEFAULT_ANALYSIS_PLACE_LAYERS,
+  );
   const [analyzeResults, setAnalyzeResults] = useState<any>(null);
   const [contourResults, setContourResults] = useState<Array<{ minutes: number; result: AnalyzeResponse }>>([]);
   const [trafficStatus, setTrafficStatus] = useState<TrafficStatus | null>(null);
@@ -799,18 +815,22 @@ function App() {
 
     if (activeTab === 'analyze' && analyzeResults) {
       const drawnBounds: L.LatLngBounds[] = [];
-      if (analysisLayers.serviceArea && analyzeResults.serviceArea?.type === 'FeatureCollection' && analyzeResults.serviceArea.features?.length) {
-        const contourCollection = analysisCostType === 'time' && contourResults.length
-          ? {
-              type: 'FeatureCollection',
-              features: [...contourResults]
-                .sort((left, right) => right.minutes - left.minutes)
-                .flatMap((contour) => (contour.result.serviceArea?.features || []).map((feature: any) => ({
-                  ...feature,
-                  properties: { ...(feature.properties || {}), contourMinutes: contour.minutes },
-                }))),
-            }
-          : analyzeResults.serviceArea;
+      const visibleContours = contourResults
+        .filter((contour) => analysisLayers[contourLayerKey(contour.minutes)] ?? false)
+        .sort((left, right) => right.minutes - left.minutes);
+      const contourCollection = analysisCostType === 'time' && contourResults.length
+        ? {
+            type: 'FeatureCollection',
+            features: visibleContours.flatMap((contour) => (contour.result.serviceArea?.features || []).map((feature: any) => ({
+              ...feature,
+              properties: { ...(feature.properties || {}), contourMinutes: contour.minutes },
+            }))),
+          }
+        : analyzeResults.serviceArea;
+      const shouldDrawServiceArea = analysisCostType === 'time'
+        ? visibleContours.length > 0
+        : analysisLayers.serviceArea;
+      if (shouldDrawServiceArea && contourCollection?.type === 'FeatureCollection' && contourCollection.features?.length) {
         layersRef.current.dynamicServiceArea = L.geoJSON(contourCollection as any, {
           pane: 'analysisArea',
           style: (feature) => {
@@ -891,23 +911,39 @@ function App() {
       };
       if (analysisCostType === 'time') {
         const response = await analyzeServiceAreaContours(request);
+        if (!response.contours.length || response.contours.some((contour) => (
+          contour.result.analysisQuality !== 'network'
+          || !isFeatureCollection(contour.result.reachableRoads)
+          || contour.result.reachableRoads.features.length === 0
+        ))) {
+          throw new Error('ROAD_NETWORK_REQUIRED');
+        }
         setContourResults(response.contours);
         const selectedMinutes = analysisLimit / 60;
         const selected = response.contours.find((contour) => contour.minutes === selectedMinutes)
           || response.contours.find((contour) => contour.minutes === 15)
           || response.contours[0];
+        if (selected) {
+          setAnalysisLayers((previous) => ({
+            ...previous,
+            [contourLayerKey(selected.minutes)]: true,
+          }));
+        }
         setAnalyzeResults(selected?.result || null);
         if (response.traffic) setTrafficStatus(response.traffic);
       } else {
         const data = await analyzeServiceArea(request);
+        if (data.analysisQuality !== 'network' || !isFeatureCollection(data.reachableRoads) || !data.reachableRoads.features.length) {
+          throw new Error('ROAD_NETWORK_REQUIRED');
+        }
         setAnalyzeResults(data);
       }
       const label = analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance} ม.`;
       setMessage(`แสดงพื้นที่ที่เข้าถึงได้ภายใน ${label} พร้อมสถานที่สำคัญในบริเวณแล้ว`);
     } catch (e: any) {
       console.error('Analysis failed:', e);
-      setAnalyzeError('ยังไม่สามารถคำนวณจากจุดนี้ได้ กรุณาเลือกจุดอื่นหรือลองอีกครั้ง');
-      setMessage('ยังไม่สามารถคำนวณพื้นที่เข้าถึงได้ กรุณาลองอีกครั้ง');
+      setAnalyzeError('ยังไม่พบโครงข่ายถนนที่พร้อมคำนวณจากจุดนี้ กรุณาลองอีกครั้ง');
+      setMessage('ยังไม่สามารถคำนวณบนโครงข่ายถนนได้ กรุณาลองอีกครั้ง');
     } finally {
       setIsAnalyzing(false);
     }
@@ -967,6 +1003,36 @@ function App() {
     });
     return places.sort((left, right) => left.distanceKm - right.distanceKm);
   }, [analyzeResults, inspectCoords, loadedAccessibilityData]);
+
+  const analysisPlaceOptions = useMemo(() => {
+    const counts = nearbyPlaces.reduce((result, place) => {
+      result[place.category] = (result[place.category] || 0) + 1;
+      return result;
+    }, {} as Record<string, number>);
+    return Object.entries(ACCESSIBILITY_PALETTE)
+      .filter(([category]) => (counts[category] || 0) > 0)
+      .map(([key, config]) => ({
+        key,
+        name: config.name,
+        emoji: config.emoji,
+        color: config.primary,
+        count: counts[key],
+      }));
+  }, [nearbyPlaces]);
+
+  const visibleNearbyPlaces = useMemo(
+    () => nearbyPlaces.filter((place) => analysisPlaceLayers[place.category] ?? false),
+    [analysisPlaceLayers, nearbyPlaces],
+  );
+
+  const visibleAnalysisLayerCount = useMemo(() => {
+    const baseKeys = ['startPoint', 'reachableRoads', 'snappedNode'];
+    const baseCount = baseKeys.filter((key) => analysisLayers[key]).length;
+    const contourCount = contourResults.filter((contour) => analysisLayers[contourLayerKey(contour.minutes)]).length;
+    const placeCount = analysisPlaceOptions.filter((option) => analysisPlaceLayers[option.key]).length;
+    const distanceAreaCount = analysisCostType === 'distance' && analysisLayers.serviceArea ? 1 : 0;
+    return baseCount + contourCount + placeCount + distanceAreaCount;
+  }, [analysisCostType, analysisLayers, analysisPlaceLayers, analysisPlaceOptions, contourResults]);
 
   const isLoadingNearbyPlaces = Boolean(analyzeResults) && Object.keys(ACCESSIBILITY_PALETTE).some((category) => (
     loadingLayers[`${category}-pois`] || !loadedAccessibilityData[`${category}-pois`]
@@ -1103,9 +1169,9 @@ function App() {
     const map = mapRef.current;
     layersRef.current.dynamicNearbyPlaces?.remove();
     layersRef.current.dynamicNearbyPlaces = null;
-    if (!map || activeTab !== 'analyze' || !analysisLayers.nearbyPlaces || !nearbyPlaces.length) return;
+    if (!map || activeTab !== 'analyze' || !visibleNearbyPlaces.length) return;
 
-    const markers = nearbyPlaces.map((place) => {
+    const markers = visibleNearbyPlaces.map((place) => {
       const marker = L.marker([place.lat, place.lng], {
         pane: 'servicePoints',
         icon: L.divIcon({
@@ -1124,7 +1190,7 @@ function App() {
       return marker;
     });
     layersRef.current.dynamicNearbyPlaces = L.layerGroup(markers).addTo(map);
-  }, [activeTab, analysisLayers.nearbyPlaces, nearbyPlaces]);
+  }, [activeTab, visibleNearbyPlaces]);
 
   return (
     <main className={`app-shell ${basemapMode === 'dark' ? 'is-dark-map' : 'is-light-map'}`}>
@@ -1239,7 +1305,7 @@ function App() {
             >
               <Layers size={18} />
               <span>ชั้นข้อมูล</span>
-              <strong>{activeTab === 'dashboard' ? visibleDashboardLayerCount : Object.values(analysisLayers).filter(Boolean).length}</strong>
+              <strong>{activeTab === 'dashboard' ? visibleDashboardLayerCount : visibleAnalysisLayerCount}</strong>
             </button>
 
             {isLayerPanelOpen && (
@@ -1322,7 +1388,14 @@ function App() {
                     </div>
                   </>
                 ) : (
-                  <LayerControl layers={analysisLayers} onChange={setAnalysisLayers} />
+                  <LayerControl
+                    layers={analysisLayers}
+                    contours={contourResults.map((contour) => contour.minutes)}
+                    placeLayers={analysisPlaceLayers}
+                    placeOptions={analysisPlaceOptions}
+                    onChange={setAnalysisLayers}
+                    onPlaceChange={setAnalysisPlaceLayers}
+                  />
                 )}
               </div>
             )}
@@ -1346,12 +1419,17 @@ function App() {
           </div>
         )}
 
-        {activeTab === 'analyze' && contourResults.length > 0 && (
+        {activeTab === 'analyze' && contourResults.some((contour) => analysisLayers[contourLayerKey(contour.minutes)]) && (
           <div className="contour-map-legend" aria-label="ช่วงเวลาพื้นที่เข้าถึง">
             <strong>พื้นที่ตามเวลา</strong>
-            <span><i style={{ background: '#14b8a6' }} />10 นาที</span>
-            <span><i style={{ background: '#38bdf8' }} />15 นาที</span>
-            <span><i style={{ background: '#8b5cf6' }} />30 นาที</span>
+            {contourResults
+              .filter((contour) => analysisLayers[contourLayerKey(contour.minutes)])
+              .map((contour) => (
+                <span key={contour.minutes}>
+                  <i style={{ background: contour.minutes === 10 ? '#14b8a6' : contour.minutes === 15 ? '#38bdf8' : '#8b5cf6' }} />
+                  {contour.minutes} นาที
+                </span>
+              ))}
           </div>
         )}
       </section>

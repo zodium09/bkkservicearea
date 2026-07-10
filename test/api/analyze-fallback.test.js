@@ -4,7 +4,7 @@ const routing = require('../../backend/services/routing.service');
 const network = require('../../backend/services/network.service');
 const { normalizeAnalyzeRequest } = require('../../backend/utils/validation');
 
-test('fallback analysis returns an approximate GeoJSON service area when roads are unavailable', async () => {
+test('fallback analysis refuses to replace a road network with a radius buffer', async () => {
   const originalLoadRoads = network.loadRoadsForFacilities;
   const originalLoadDistricts = network.loadDistricts;
   const originalFindQgis = network.findQgisProcess;
@@ -23,15 +23,10 @@ test('fallback analysis returns an approximate GeoJSON service area when roads a
       costType: 'time',
       limit: 900,
     });
-    const result = await routing.analyzeFallback(request);
-
-    assert.equal(result.engine, 'straight-line-fallback');
-    assert.equal(result.analysisQuality, 'approximate');
-    assert.equal(result.serviceArea.type, 'FeatureCollection');
-    assert.equal(result.serviceArea.features.length, 1);
-    assert.equal(result.reachableRoads.type, 'FeatureCollection');
-    assert.equal(result.reachableRoads.features.length, 0);
-    assert.ok(result.metrics.serviceAreaSqKm > 0);
+    await assert.rejects(
+      routing.analyzeFallback(request),
+      (error) => error.status === 503 && error.code === 'ROAD_NETWORK_UNAVAILABLE',
+    );
   } finally {
     network.loadRoadsForFacilities = originalLoadRoads;
     network.loadDistricts = originalLoadDistricts;
@@ -65,7 +60,7 @@ test('fallback analysis uses road network when road features are available', asy
     });
     const result = await routing.analyzeFallback(request);
 
-    assert.equal(result.engine, 'js-dijkstra-fallback');
+    assert.equal(result.engine, 'js-dijkstra-network');
     assert.equal(result.analysisQuality, 'network');
     assert.equal(result.reachableRoads.type, 'FeatureCollection');
     assert.ok(result.reachableRoads.features.length > 0);
@@ -103,7 +98,7 @@ test('fallback analysis connects roads that geometrically cross without shared v
     });
     const result = await routing.analyzeFallback(request);
 
-    assert.equal(result.engine, 'js-dijkstra-fallback');
+    assert.equal(result.engine, 'js-dijkstra-network');
     assert.ok(result.metrics.networkNodesReached > 4);
     assert.ok(result.metrics.reachedRoadLengthKm > 1.5);
     assert.ok(result.metrics.fallbackTopology.nodedIntersectionCount >= 1);
@@ -152,8 +147,8 @@ test('bike fallback can leave a medium disconnected source component', async () 
     const walk = await routing.analyzeFallback(normalizeAnalyzeRequest({ ...baseRequest, mode: 'walk' }));
     const bike = await routing.analyzeFallback(normalizeAnalyzeRequest({ ...baseRequest, mode: 'bike' }));
 
-    assert.equal(walk.engine, 'js-dijkstra-fallback');
-    assert.equal(bike.engine, 'js-dijkstra-fallback');
+    assert.equal(walk.engine, 'js-dijkstra-network');
+    assert.equal(bike.engine, 'js-dijkstra-network');
     assert.equal(walk.metrics.fallbackTopology.virtualConnectorCount, 0);
     assert.ok(bike.metrics.fallbackTopology.virtualConnectorCount > 0);
     assert.ok(bike.metrics.reachedRoadLengthKm > walk.metrics.reachedRoadLengthKm + 1);

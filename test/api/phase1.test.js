@@ -53,10 +53,10 @@ test('data catalog and traffic status endpoints remain available without a licen
 
 test('contour endpoint calculates the standard 10, 15 and 30 minute bands', async () => {
   const originalHealth = db.checkHealth;
-  const originalFallback = routing.analyzeFallback;
+  const originalFallbackContours = routing.analyzeFallbackContours;
   const receivedLimits = [];
   db.checkHealth = async () => ({ connected: false, postgis: false, pgrouting: false });
-  routing.analyzeFallback = async (request) => {
+  routing.analyzeFallbackContours = async (requests) => requests.map((request) => {
     receivedLimits.push(request.limit);
     return {
       engine: 'test',
@@ -65,7 +65,7 @@ test('contour endpoint calculates the standard 10, 15 and 30 minute bands', asyn
       reachableRoads: { type: 'FeatureCollection', features: [] },
       intersectingDistricts: [],
     };
-  };
+  });
 
   const server = await listen();
   try {
@@ -81,7 +81,7 @@ test('contour endpoint calculates the standard 10, 15 and 30 minute bands', asyn
     assert.deepEqual(receivedLimits, [600, 900, 1800]);
   } finally {
     db.checkHealth = originalHealth;
-    routing.analyzeFallback = originalFallback;
+    routing.analyzeFallbackContours = originalFallbackContours;
     await close(server);
   }
 });

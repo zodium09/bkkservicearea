@@ -4,7 +4,7 @@
   "functions": {
     "api/index.js": {
       "maxDuration": 60,
-      "includeFiles": "{backend/**,data/catalog.json,data/processed/bma-layers/layer-13.geojson,data/processed/population/district-population.json}"
+      "includeFiles": "{backend/**,data/catalog.json,data/processed/bma-layers/layer-13.geojson,data/processed/population/district-population.json,data/processed/road-network/**}"
     }
   },
   "rewrites": [
@@ -14,4 +14,3 @@
     }
   ]
 }
-

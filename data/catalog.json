@@ -25,6 +25,17 @@
       "status": "active"
     },
     {
+      "id": "bma-road-network-compact",
+      "title": "โครงข่ายถนนกรุงเทพมหานครแบบย่อสำหรับวิเคราะห์รายจุด",
+      "publisher": "กรุงเทพมหานคร",
+      "role": "authoritative_network_fallback",
+      "format": "Gzip tiled JSON (derived from MapServer layer 7)",
+      "refresh": "เมื่อปรับปรุงชั้นข้อมูลถนน",
+      "license": "ต้องตรวจสอบกับเจ้าของข้อมูล",
+      "status": "active",
+      "note": "ใช้เฉพาะ geometry และรหัสช่วงถนนเพื่อคำนวณ Dijkstra; ไม่รวมไฟล์ต้นทางขนาดใหญ่"
+    },
+    {
       "id": "openstreetmap-road-network",
       "title": "โครงข่ายถนนและทางเดิน OpenStreetMap",
       "publisher": "OpenStreetMap contributors",

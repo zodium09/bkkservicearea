@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-10T08:25:29.497688+00:00",
+  "source": "BMA MapServer road layer 7 (derived compact geometry)",
+  "sourceFeatureCount": 243159,
+  "compactFeatureCount": 243167,
+  "tileCount": 257,
+  "tileSizeDegrees": 0.025,
+  "origin": [
+    100.325,
+    13.475000000000001
+  ],
+  "bounds": [
+    100.32900135015325,
+    13.495591749336961,
+    100.93748885918558,
+    13.954976082295506
+  ],
+  "simplifyToleranceDegrees": 2e-05,
+  "coordinatePrecision": 6,
+  "compressedBytes": 4262385
+}

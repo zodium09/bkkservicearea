@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const { execFile } = require('child_process');
 const turf = require('@turf/turf');
 
@@ -9,7 +10,11 @@ const BASEMAP_PATH = '/citymap/rest/services/Basemap_Service/Basemap1000_32647_H
 const ROAD_LAYER_ID = 7;
 const PROCESSED_LAYERS_DIR = path.join(ROOT, 'data', 'processed', 'bma-layers');
 const PROCESSED_CATALOG_PATH = path.join(PROCESSED_LAYERS_DIR, 'catalog.json');
+const COMPACT_ROAD_DIR = path.join(ROOT, 'data', 'processed', 'road-network');
+const COMPACT_ROAD_MANIFEST_PATH = path.join(COMPACT_ROAD_DIR, 'manifest.json');
 const processedLayerCache = new Map();
+const compactRoadTileCache = new Map();
+let compactRoadManifestCache = null;
 let qgisProcessCache = null;
 
 const LAYER_DIMENSIONS = {
@@ -114,6 +119,72 @@ function queryProcessedLayerByBbox(layerId, bbox, maxFeatures = 50000) {
   return turf.featureCollection(features);
 }
 
+function loadCompactRoadManifest() {
+  if (compactRoadManifestCache) return compactRoadManifestCache;
+  if (!fs.existsSync(COMPACT_ROAD_MANIFEST_PATH)) return null;
+  compactRoadManifestCache = JSON.parse(fs.readFileSync(COMPACT_ROAD_MANIFEST_PATH, 'utf8'));
+  return compactRoadManifestCache;
+}
+
+function loadCompactRoadTile(xIndex, yIndex) {
+  const key = `${xIndex}_${yIndex}`;
+  if (compactRoadTileCache.has(key)) {
+    const cached = compactRoadTileCache.get(key);
+    compactRoadTileCache.delete(key);
+    compactRoadTileCache.set(key, cached);
+    return cached;
+  }
+  const tilePath = path.join(COMPACT_ROAD_DIR, `${key}.json.gz`);
+  if (!fs.existsSync(tilePath)) return [];
+  const records = JSON.parse(zlib.gunzipSync(fs.readFileSync(tilePath)).toString('utf8'));
+  compactRoadTileCache.set(key, records);
+  const maxCachedTiles = Number(process.env.COMPACT_ROAD_TILE_CACHE_SIZE) || 96;
+  while (compactRoadTileCache.size > maxCachedTiles) {
+    compactRoadTileCache.delete(compactRoadTileCache.keys().next().value);
+  }
+  return records;
+}
+
+function queryCompactRoadsByBbox(bbox, facility, maxFeatures = 100000) {
+  const manifest = loadCompactRoadManifest();
+  if (!manifest) return null;
+  const [originLng, originLat] = manifest.origin;
+  const tileSize = Number(manifest.tileSizeDegrees);
+  const [xmin, ymin, xmax, ymax] = bbox;
+  const minX = Math.floor((xmin - originLng) / tileSize);
+  const maxX = Math.floor((xmax - originLng) / tileSize);
+  const minY = Math.floor((ymin - originLat) / tileSize);
+  const maxY = Math.floor((ymax - originLat) / tileSize);
+  const tiles = [];
+  for (let xIndex = minX; xIndex <= maxX; xIndex += 1) {
+    for (let yIndex = minY; yIndex <= maxY; yIndex += 1) {
+      const centerLng = originLng + (xIndex + 0.5) * tileSize;
+      const centerLat = originLat + (yIndex + 0.5) * tileSize;
+      const distance = Math.hypot(centerLng - facility.lng, centerLat - facility.lat);
+      tiles.push({ xIndex, yIndex, distance });
+    }
+  }
+  tiles.sort((left, right) => left.distance - right.distance);
+
+  const seen = new Set();
+  const features = [];
+  for (const tile of tiles) {
+    for (const record of loadCompactRoadTile(tile.xIndex, tile.yIndex)) {
+      const [id, coordinates] = record;
+      if (seen.has(id) || !Array.isArray(coordinates) || coordinates.length < 2) continue;
+      seen.add(id);
+      features.push({
+        type: 'Feature',
+        id,
+        properties: { OBJECTID: id, compactNetwork: true },
+        geometry: { type: 'LineString', coordinates },
+      });
+      if (features.length >= maxFeatures) return turf.featureCollection(features);
+    }
+  }
+  return turf.featureCollection(features);
+}
+
 function timeoutSignal(timeoutMs) {
   if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
     return AbortSignal.timeout(timeoutMs);
@@ -203,6 +274,12 @@ async function loadRoadsForFacility(facility, distanceMeters) {
   const searchArea = turf.buffer(turf.point([facility.lng, facility.lat]), searchKm, { units: 'kilometers' });
   const [xmin, ymin, xmax, ymax] = turf.bbox(searchArea);
   const maxFeatures = Number(process.env.FALLBACK_ROAD_MAX_FEATURES) || 10000;
+  const compact = queryCompactRoadsByBbox(
+    [xmin, ymin, xmax, ymax],
+    facility,
+    Number(process.env.COMPACT_ROAD_MAX_FEATURES) || 100000,
+  );
+  if (compact?.features?.length) return compact;
   const processed = queryProcessedLayerByBbox(ROAD_LAYER_ID, [xmin, ymin, xmax, ymax], maxFeatures);
   if (processed) return processed;
 
@@ -260,6 +337,8 @@ module.exports = {
   ARCGIS_ORIGIN,
   BASEMAP_PATH,
   ROAD_LAYER_ID,
+  COMPACT_ROAD_DIR,
+  COMPACT_ROAD_MANIFEST_PATH,
   buildCatalogFromMetadata,
   readProcessedCatalog,
   processedLayerPath,
@@ -267,6 +346,8 @@ module.exports = {
   isProcessedLayerSmallEnough,
   loadProcessedLayer,
   queryProcessedLayerByBbox,
+  loadCompactRoadManifest,
+  queryCompactRoadsByBbox,
   fetchArcgis,
   findQgisProcess,
   loadDistricts,

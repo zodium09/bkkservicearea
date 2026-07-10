@@ -9,6 +9,9 @@ data/processed/*
 !data/processed/accessibility/
 !data/processed/population/
 !data/processed/population/district-population.json
+!data/processed/road-network/
+!data/processed/road-network/manifest.json
+!data/processed/road-network/*.json.gz
 !data/processed/bma-layers/
 data/processed/bma-layers/*
 !data/processed/bma-layers/layer-13.geojson

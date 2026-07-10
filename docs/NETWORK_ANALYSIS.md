@@ -24,10 +24,17 @@ Default buffer width is mode-dependent: walk 40 m, bike 65 m, drive 125 m.
 
 ## Runtime Fallbacks
 
-When PostGIS/pgRouting is unavailable, `/api/analyze` first tries the local processed road layer only if it is small enough for an interactive request. Large `layer-7.geojson` files are skipped by default because parsing them can block the Node.js event loop.
+When PostGIS/pgRouting is unavailable, `/api/analyze` uses the compact BMA road tiles in `data/processed/road-network/` and runs Dijkstra in Node.js. The 300 MB source `layer-7.geojson` remains excluded from Git; only the derived 4–5 MB compressed tile set is deployed.
+
+Rebuild the compact tiles after refreshing the local BMA road source:
+
+```bash
+npm run prepare:road-network
+```
 
 - `FALLBACK_ROAD_LAYER_MAX_BYTES`: maximum local road GeoJSON size for JS Dijkstra fallback. Default: 25 MB.
 - `ENABLE_LARGE_LOCAL_ROADS=true`: allow JS fallback to parse large local road files.
 - `ENABLE_ARCGIS_ROAD_FALLBACK=false`: disable live ArcGIS road queries. Live road queries are enabled by default so hosted deployments still analyze along road corridors when PostGIS is offline.
+- `COMPACT_ROAD_MAX_FEATURES`: maximum compact road segments loaded around a point. Default: 100,000.
 
-If no usable road network is available, the API returns a `straight-line-fallback` response with `analysisQuality: "approximate"` and a valid GeoJSON service area so the custom point workflow still completes.
+If no usable road network is available, the API returns `ROAD_NETWORK_UNAVAILABLE` and does not substitute a radius buffer. The old approximate circle is available only through the explicit emergency flag `ALLOW_APPROXIMATE_SERVICE_AREA=true` and is disabled by default.

@@ -8,6 +8,7 @@
     "client": "vite --host 127.0.0.1 --port 5173",
     "server": "node server.js",
     "prepare:data": "node scripts/prepare-bma-layers.js",
+    "prepare:road-network": "python scripts/build-compact-road-network.py",
     "build": "vite build",
     "test": "node --test test/api/*.test.js",
     "test:api": "node --test test/api/*.test.js",
