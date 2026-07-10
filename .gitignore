@@ -21,3 +21,4 @@ data/processed/bma-layers/*
 *.log
 *.pid
 scratch/
+.vercel
