@@ -1,3 +1,5 @@
+import { ACCESSIBILITY_DOMAINS } from './ExecutiveDashboard';
+
 interface PlaceLayerOption {
   key: string;
   name: string;
@@ -35,6 +37,25 @@ export function LayerControl({
 }: LayerControlProps) {
   const setAllPlaces = (visible: boolean) => {
     onPlaceChange(Object.fromEntries(placeOptions.map((option) => [option.key, visible])));
+  };
+  const placeOptionsByKey = Object.fromEntries(placeOptions.map((option) => [option.key, option]));
+  const domainOptions = ACCESSIBILITY_DOMAINS.map((domain) => {
+    const options = domain.categoryKeys.map((key) => placeOptionsByKey[key]).filter(Boolean);
+    return {
+      ...domain,
+      options,
+      count: options.reduce((sum, option) => sum + option.count, 0),
+    };
+  }).filter((domain) => domain.options.length > 0);
+  const contextOptions = placeOptions.filter((option) => option.key === 'communities');
+
+  const setDomainPlaces = (domainKey: string, visible: boolean) => {
+    const domain = domainOptions.find((item) => item.key === domainKey);
+    if (!domain) return;
+    onPlaceChange({
+      ...placeLayers,
+      ...Object.fromEntries(domain.options.map((option) => [option.key, visible])),
+    });
   };
 
   return (
@@ -91,18 +112,34 @@ export function LayerControl({
             </div>
           )}
         </div>
-        {placeOptions.length ? placeOptions.map((option) => (
-          <label key={option.key} className="layer-row is-place-layer">
-            <input
-              type="checkbox"
-              checked={placeLayers[option.key] ?? false}
-              onChange={(event) => onPlaceChange({ ...placeLayers, [option.key]: event.target.checked })}
-            />
-            <i className="analysis-layer-swatch" style={{ background: option.color }} />
-            <span><b>{option.emoji}</b> {option.name}</span>
-            <strong>{option.count.toLocaleString()}</strong>
-          </label>
-        )) : (
+        {domainOptions.length ? (
+          <>
+            {domainOptions.map((domain) => (
+              <label key={domain.key} className="layer-row is-place-layer is-domain-layer">
+                <input
+                  type="checkbox"
+                  checked={domain.options.every((option) => placeLayers[option.key] ?? false)}
+                  onChange={(event) => setDomainPlaces(domain.key, event.target.checked)}
+                />
+                <i className="analysis-layer-swatch" style={{ background: domain.color }} />
+                <span>{domain.name}</span>
+                <strong>{domain.count.toLocaleString()}</strong>
+              </label>
+            ))}
+            {contextOptions.map((option) => (
+              <label key={option.key} className="layer-row is-place-layer is-context-layer">
+                <input
+                  type="checkbox"
+                  checked={placeLayers[option.key] ?? false}
+                  onChange={(event) => onPlaceChange({ ...placeLayers, [option.key]: event.target.checked })}
+                />
+                <i className="analysis-layer-swatch" style={{ background: '#64748b' }} />
+                <span>บริบทชุมชน</span>
+                <strong>{option.count.toLocaleString()}</strong>
+              </label>
+            ))}
+          </>
+        ) : (
           <p className="analysis-layer-empty">วิเคราะห์พื้นที่ก่อนเพื่อเลือกประเภทสถานที่</p>
         )}
       </section>

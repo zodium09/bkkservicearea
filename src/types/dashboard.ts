@@ -19,3 +19,12 @@ export interface AccessibilityCategoryMeta {
   group: 'health' | 'education' | 'transit' | 'safety';
   color: string;
 }
+
+export interface AccessibilityDomainMeta {
+  key: AccessibilityCategoryMeta['group'];
+  shortName: string;
+  name: string;
+  description: string;
+  color: string;
+  categoryKeys: string[];
+}

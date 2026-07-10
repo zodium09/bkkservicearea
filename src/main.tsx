@@ -34,7 +34,11 @@ import {
 } from './services/api';
 import { AnalyzePanel } from './components/AnalyzePanel';
 import { LayerControl } from './components/LayerControl';
-import { ExecutiveDashboard } from './components/ExecutiveDashboard';
+import {
+  ACCESSIBILITY_DOMAINS,
+  domainCoverageFromRecord,
+  ExecutiveDashboard,
+} from './components/ExecutiveDashboard';
 import { NearbyPlaces } from './components/NearbyPlaces';
 import type { AnalyzeResponse, CostType, TrafficStatus, TravelMode } from './types/gis';
 import type { AccessibilityStats, DashboardTravelMode } from './types/dashboard';
@@ -159,34 +163,8 @@ const ACCESSIBILITY_PALETTE: Record<string, AccessibilityConfig> = {
   },
 };
 
-const ACCESSIBILITY_GROUPS = [
-  {
-    id: 'medical',
-    name: '🏥 บริการทางการแพทย์และสาธารณสุข',
-    categories: ['bkk_hospitals', 'gov_hospitals', 'private_hospitals', 'health_centers']
-  },
-  {
-    id: 'schools',
-    name: '🏫 โรงเรียนและสถานศึกษา',
-    categories: ['schools_bkk', 'schools_obec', 'schools_private']
-  },
-  {
-    id: 'transit',
-    name: '🚆 ระบบขนส่งสาธารณะ',
-    categories: ['transit_train', 'transit_boat', 'transit_bus']
-  },
-  {
-    id: 'safety_disaster',
-    name: '🚨 ความปลอดภัยและบรรเทาสาธารณภัย',
-    categories: ['fire_stations', 'police_stations', 'communities']
-  }
-];
-
 const DEFAULT_ANALYSIS_PLACE_LAYERS = Object.fromEntries(
-  Object.keys(ACCESSIBILITY_PALETTE).map((category) => [
-    category,
-    ['bkk_hospitals', 'health_centers', 'transit_train', 'fire_stations'].includes(category),
-  ]),
+  Object.keys(ACCESSIBILITY_PALETTE).map((category) => [category, false]),
 );
 
 function contourLayerKey(minutes: number): string {
@@ -271,17 +249,14 @@ function App() {
   const [basemapMode, setBasemapMode] = useState<'light' | 'dark'>('dark');
   const [message, setMessage] = useState<string>('ค้นหาสถานที่หรือคลิกบนแผนที่เพื่อเริ่มวิเคราะห์การเข้าถึง');
   const [currentZoom, setCurrentZoom] = useState<number>(11);
-  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
-    return window.innerWidth > 560;
-  });
+  const [isLayerPanelOpen, setIsLayerPanelOpen] = useState<boolean>(false);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analyze'>('dashboard');
 
   // 15-Minute City Dashboard State
   const [dashboardLayers, setDashboardLayers] = useState<Record<string, boolean>>({
-    bkk_hospitals: true,
+    bkk_hospitals: false,
     gov_hospitals: false,
     private_hospitals: false,
     health_centers: false,
@@ -293,18 +268,18 @@ function App() {
     transit_bus: false,
     fire_stations: false,
     police_stations: false,
-    communities: false,
   });
   const [dashboardTravelMode, setDashboardTravelMode] = useState<DashboardTravelMode>('walk');
   const [dashboardStats, setDashboardStats] = useState<AccessibilityStats | null>(null);
-  const [dashboardFocusCategory, setDashboardFocusCategory] = useState<string>('health_centers');
+  const [dashboardFocusDomain, setDashboardFocusDomain] = useState<string>('health');
+  const [showDistrictCoverage, setShowDistrictCoverage] = useState<boolean>(false);
   const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | null>(null);
   const [districtsGeojson, setDistrictsGeojson] = useState<any>(null);
   const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
   const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
 
   // Global POI marker visibility
-  const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(true);
+  const [showPoiMarkers, setShowPoiMarkers] = useState<boolean>(false);
 
   // Dynamic analysis states
   const [inspectCoords, setInspectCoords] = useState<L.LatLng | null>(null);
@@ -399,7 +374,6 @@ function App() {
           const segments = await getTrafficSegments();
           if (isFeatureCollection(segments)) {
             setTrafficData(segments);
-            setShowTraffic(true);
           }
         }
       })
@@ -570,21 +544,27 @@ function App() {
         pane: 'districts',
         style: (feature) => {
           const code = districtStatsCode(feature);
-          const coverage = dashboardStats?.districts[code]?.coverage[`${dashboardFocusCategory}_${dashboardTravelMode}`] ?? 0;
+          const coverageRecord = dashboardStats?.districts[code]?.coverage;
+          const coverage = coverageRecord
+            ? domainCoverageFromRecord(coverageRecord, dashboardFocusDomain, dashboardTravelMode)
+            : 0;
           const selected = activeTab === 'dashboard' && code === selectedDistrictCode;
           return {
             color: selected ? '#f8fafc' : basemapMode === 'dark' ? '#475569' : '#cbd5e1',
             weight: selected ? 3 : 1,
             opacity: activeTab === 'dashboard' ? 0.95 : 0.6,
-            fillColor: activeTab === 'dashboard' ? coverageColor(coverage) : 'transparent',
-            fillOpacity: activeTab === 'dashboard' ? (selected ? 0.78 : 0.5) : 0,
+            fillColor: activeTab === 'dashboard' && showDistrictCoverage ? coverageColor(coverage) : 'transparent',
+            fillOpacity: activeTab === 'dashboard' && showDistrictCoverage ? (selected ? 0.68 : 0.42) : 0,
           };
         },
         onEachFeature: (feature, layer: L.Layer) => {
           const name = feature.properties?.DNAME || feature.properties?.DISTRICT_N || feature.properties?.NAME || 'เขต';
           const code = districtStatsCode(feature);
-          const coverage = dashboardStats?.districts[code]?.coverage[`${dashboardFocusCategory}_${dashboardTravelMode}`];
-          const tooltipMetric = activeTab === 'dashboard' && Number.isFinite(coverage)
+          const coverageRecord = dashboardStats?.districts[code]?.coverage;
+          const coverage = coverageRecord
+            ? domainCoverageFromRecord(coverageRecord, dashboardFocusDomain, dashboardTravelMode)
+            : undefined;
+          const tooltipMetric = activeTab === 'dashboard' && showDistrictCoverage && Number.isFinite(coverage)
             ? `<br><span>ความครอบคลุม <strong>${Number(coverage).toFixed(1)}%</strong></span>`
             : '';
           layer.bindTooltip(`<strong>เขต${escapeHtml(name)}</strong>${tooltipMetric}`, {
@@ -625,6 +605,8 @@ function App() {
         if (!visible) return;
 
         const config = ACCESSIBILITY_PALETTE[category];
+        const domain = ACCESSIBILITY_DOMAINS.find((item) => item.categoryKeys.includes(category));
+        const domainColor = domain?.color ?? config.primary;
         const areaKey = `${category}-area-${dashboardTravelMode}`;
         const poisKey = `${category}-pois`;
 
@@ -634,11 +616,11 @@ function App() {
           layersRef.current.accessibility[areaKey] = L.geoJSON(areaData, {
             pane: 'analysisArea',
             style: {
-              color: config.primary,
+              color: domainColor,
               weight: 1.5,
               opacity: 0.85,
-              fillColor: config.light,
-              fillOpacity: basemapMode === 'dark' ? 0.28 : 0.22,
+              fillColor: domainColor,
+              fillOpacity: basemapMode === 'dark' ? 0.18 : 0.14,
             },
           }).addTo(map);
         }
@@ -650,7 +632,7 @@ function App() {
             pane: 'servicePoints',
             pointToLayer: (feature, latlng) => {
               const name = feature.properties.name || 'จุดบริการ';
-              let color = config.primary;
+              let color = domainColor;
 
               // LOD Optimization: Use canvas CircleMarkers at lower zooms to prevent browser freezing
               if (useCircleMarkers) {
@@ -732,7 +714,8 @@ function App() {
     dashboardLayers,
     dashboardTravelMode,
     dashboardStats,
-    dashboardFocusCategory,
+    dashboardFocusDomain,
+    showDistrictCoverage,
     selectedDistrictCode,
     basemapMode,
     activeTab,
@@ -964,10 +947,25 @@ function App() {
     downloadAnchor.remove();
   };
 
-  const visibleDashboardLayerCount = useMemo(
-    () => Object.values(dashboardLayers).filter(Boolean).length,
+  const visibleDashboardDomainCount = useMemo(
+    () => ACCESSIBILITY_DOMAINS.filter((domain) => (
+      domain.categoryKeys.some((category) => dashboardLayers[category])
+    )).length,
     [dashboardLayers],
   );
+
+  const visibleDashboardLayerCount = visibleDashboardDomainCount
+    + (showDistrictCoverage ? 1 : 0)
+    + (showPoiMarkers && visibleDashboardDomainCount > 0 ? 1 : 0);
+
+  const setDashboardDomainVisibility = (domainKey: string, visible: boolean) => {
+    const domain = ACCESSIBILITY_DOMAINS.find((item) => item.key === domainKey);
+    if (!domain) return;
+    setDashboardLayers((current) => ({
+      ...current,
+      ...Object.fromEntries(domain.categoryKeys.map((category) => [category, visible])),
+    }));
+  };
 
   const nearbyPlaces = useMemo<NearbyPlace[]>(() => {
     if (!inspectCoords || !isFeatureCollection(analyzeResults?.serviceArea)) return [];
@@ -1371,54 +1369,61 @@ function App() {
                       </button>
                     </div>
 
-                    <label className="webmap-poi-toggle">
-                      <input
-                        type="checkbox"
-                        checked={showPoiMarkers}
-                        onChange={(e) => setShowPoiMarkers(e.target.checked)}
-                      />
-                      <span>แสดงหมุดบริการ</span>
-                    </label>
+                    <div className="dashboard-map-options">
+                      <label className="webmap-poi-toggle is-primary-map-layer">
+                        <input
+                          type="checkbox"
+                          checked={showDistrictCoverage}
+                          onChange={(event) => setShowDistrictCoverage(event.target.checked)}
+                        />
+                        <span>
+                          <strong>สีเปรียบเทียบรายเขต</strong>
+                          <small>{ACCESSIBILITY_DOMAINS.find((domain) => domain.key === dashboardFocusDomain)?.name}</small>
+                        </span>
+                      </label>
 
-                    <div className="accessibility-layers-list is-map-control">
-                      {ACCESSIBILITY_GROUPS.map((group) => (
-                        <div key={group.id} className="webmap-layer-group">
-                          <div className="webmap-layer-group-title">{group.name}</div>
-                          <div className="webmap-layer-group-items">
-                            {group.categories.map((key) => {
-                              const config = ACCESSIBILITY_PALETTE[key];
-                              if (!config) return null;
-                              const isVisible = dashboardLayers[key];
-                              const isLayerLoading =
-                                loadingLayers[`${key}-area-${dashboardTravelMode}`] || loadingLayers[`${key}-pois`];
+                      <div className="map-layer-divider">
+                        <span>พื้นที่เข้าถึง 15 นาที</span>
+                        <small>ปิดไว้เมื่อเริ่มใช้งาน</small>
+                      </div>
 
-                              return (
-                                <div
-                                  key={key}
-                                  className="acc-layer-item"
-                                >
-                                  <label className="acc-layer-label" onClick={(e) => e.stopPropagation()}>
-                                    <input
-                                      type="checkbox"
-                                      checked={isVisible}
-                                      onChange={(e) => {
-                                        setDashboardLayers((prev) => ({ ...prev, [key]: e.target.checked }));
-                                      }}
-                                    />
-                                    <span className="layer-dot" style={{ backgroundColor: config.primary }} />
-                                    <span className="layer-emoji">{config.emoji}</span>
-                                    <span className="layer-title">{config.name}</span>
-                                  </label>
+                      <div className="domain-layer-options is-map-control">
+                        {ACCESSIBILITY_DOMAINS.map((domain) => {
+                          const isVisible = domain.categoryKeys.every((category) => dashboardLayers[category]);
+                          const isLoading = domain.categoryKeys.some((category) => (
+                            loadingLayers[`${category}-area-${dashboardTravelMode}`]
+                            || loadingLayers[`${category}-pois`]
+                          ));
+                          return (
+                            <label key={domain.key} className="domain-layer-row">
+                              <input
+                                type="checkbox"
+                                checked={isVisible}
+                                onChange={(event) => setDashboardDomainVisibility(domain.key, event.target.checked)}
+                              />
+                              <i style={{ backgroundColor: domain.color }} />
+                              <span>
+                                <strong>{domain.name}</strong>
+                                <small>{domain.categoryKeys.length} ชุดข้อมูล</small>
+                              </span>
+                              {isLoading && <Loader2 className="spin" size={13} />}
+                            </label>
+                          );
+                        })}
+                      </div>
 
-                                  {isLayerLoading ? (
-                                    <Loader2 className="spin" size={12} />
-                                  ) : null}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
+                      <label className="webmap-poi-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showPoiMarkers}
+                          disabled={visibleDashboardDomainCount === 0}
+                          onChange={(event) => setShowPoiMarkers(event.target.checked)}
+                        />
+                        <span>
+                          <strong>หมุดสถานที่</strong>
+                          <small>{visibleDashboardDomainCount ? 'แสดงเฉพาะด้านที่เปิดอยู่' : 'เปิดด้านบริการก่อน'}</small>
+                        </span>
+                      </label>
                     </div>
                   </>
                 ) : (
@@ -1437,7 +1442,9 @@ function App() {
         </div>
 
         <div className="map-mode-badge">
-          {activeTab === 'dashboard' ? 'ภาพรวมการเข้าถึงบริการทั่วกรุงเทพฯ' : 'พื้นที่เข้าถึงจากจุดที่เลือก'}
+          {activeTab === 'dashboard'
+            ? (visibleDashboardLayerCount > 0 ? 'เปิดชั้นวิเคราะห์การเข้าถึงแล้ว' : 'แผนที่ฐานกรุงเทพฯ ไม่มีชั้นวิเคราะห์')
+            : 'พื้นที่เข้าถึงจากจุดที่เลือก'}
         </div>
 
         {activeTab === 'analyze' && analyzeResults && (
@@ -1448,9 +1455,9 @@ function App() {
           </div>
         )}
 
-        {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && showDistrictCoverage && (
           <div className="coverage-map-legend" aria-label="คำอธิบายสีความครอบคลุม">
-            <div><span>ระดับการเข้าถึง</span><strong>{ACCESSIBILITY_PALETTE[dashboardFocusCategory]?.name}</strong></div>
+            <div><span>สัดส่วนพื้นที่ครอบคลุมเฉลี่ย</span><strong>{ACCESSIBILITY_DOMAINS.find((domain) => domain.key === dashboardFocusDomain)?.name}</strong></div>
             <ul>
               <li><i style={{ background: '#ef4444' }} />0–20</li>
               <li><i style={{ background: '#fb923c' }} />20–40</li>
@@ -1512,10 +1519,10 @@ function App() {
           <ExecutiveDashboard
             stats={dashboardStats}
             mode={dashboardTravelMode}
-            focusCategory={dashboardFocusCategory}
+            focusDomain={dashboardFocusDomain}
             selectedDistrictCode={selectedDistrictCode}
             onModeChange={setDashboardTravelMode}
-            onFocusCategoryChange={setDashboardFocusCategory}
+            onFocusDomainChange={setDashboardFocusDomain}
             onSelectDistrict={setSelectedDistrictCode}
             onZoomDistrict={handleZoomDistrict}
           />

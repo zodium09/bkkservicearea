@@ -1263,6 +1263,329 @@
   .nearby-map-marker { width: 22px; height: 22px; }
 }
 
+/* Balanced four-domain dashboard */
+.executive-dashboard.is-domain-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.domain-dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.domain-dashboard-header h2 {
+  color: #f8fafc;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.domain-dashboard-header p {
+  margin-top: 3px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+.domain-dashboard-header > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-size: 0.67rem;
+}
+
+.balanced-index {
+  border: 1px solid rgba(94, 234, 212, 0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #13212a;
+}
+
+.balanced-index-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 3px 14px;
+  padding: 15px;
+}
+
+.balanced-index-main > span {
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.balanced-index-main > strong {
+  grid-row: span 2;
+  color: #5eead4;
+  font-size: 1.78rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.balanced-index-main > small {
+  max-width: 31ch;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  line-height: 1.45;
+}
+
+.balanced-index-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.balanced-index-facts > div {
+  display: grid;
+  gap: 4px;
+  padding: 11px 14px;
+}
+
+.balanced-index-facts > div + div {
+  border-left: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.balanced-index-facts span {
+  color: #94a3b8;
+  font-size: 0.64rem;
+}
+
+.balanced-index-facts strong {
+  color: #f1f5f9;
+  font-size: 1rem;
+}
+
+.balanced-index-facts i {
+  margin-left: 3px;
+  color: #94a3b8;
+  font-size: 0.63rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.domain-section {
+  padding-top: 1px;
+}
+
+.domain-section + .domain-section {
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.domain-section-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+}
+
+.domain-section-title h3 {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 0.85rem;
+}
+
+.domain-section-title p {
+  margin-top: 3px;
+  max-width: 48ch;
+  color: #94a3b8;
+  font-size: 0.63rem;
+  line-height: 1.5;
+}
+
+.domain-section-title > svg {
+  flex: 0 0 auto;
+  color: #67e8f9;
+}
+
+.domain-coverage-list {
+  display: grid;
+  gap: 3px;
+}
+
+.domain-coverage-list button {
+  display: grid;
+  grid-template-columns: 8px minmax(112px, 1fr) minmax(62px, 0.8fr) 38px;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  transition: background 160ms ease-out;
+}
+
+.domain-coverage-list button:hover {
+  background: rgba(148, 163, 184, 0.07);
+}
+
+.domain-coverage-list button.is-active {
+  background: rgba(45, 212, 191, 0.09);
+  outline: 1px solid rgba(45, 212, 191, 0.24);
+}
+
+.domain-color {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.domain-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.domain-copy strong {
+  overflow: hidden;
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.domain-copy small {
+  overflow: hidden;
+  color: #7f93a3;
+  font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.domain-bar {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.domain-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.domain-coverage-list b {
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+.district-domain-list {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+}
+
+.district-domain-list > div {
+  display: grid;
+  grid-template-columns: 92px minmax(72px, 1fr) 36px;
+  align-items: center;
+  gap: 8px;
+}
+
+.district-domain-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #cbd5e1;
+  font-size: 0.64rem;
+}
+
+.district-domain-list span i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.district-domain-list > div > div {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.district-domain-list > div > div i {
+  display: block;
+  height: 100%;
+}
+
+.district-domain-list strong {
+  color: #e2e8f0;
+  font-size: 0.66rem;
+  text-align: right;
+}
+
+.domain-method-note {
+  gap: 5px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.14);
+  line-height: 1.5;
+}
+
+.is-light-map .domain-dashboard-header h2,
+.is-light-map .domain-section-title h3,
+.is-light-map .domain-copy strong,
+.is-light-map .domain-coverage-list b,
+.is-light-map .balanced-index-facts strong,
+.is-light-map .district-domain-list strong,
+.is-light-map .district-domain-list span {
+  color: #0f172a;
+}
+
+.is-light-map .domain-dashboard-header p,
+.is-light-map .domain-dashboard-header > span,
+.is-light-map .domain-section-title p,
+.is-light-map .domain-copy small,
+.is-light-map .balanced-index-main > small,
+.is-light-map .balanced-index-facts span,
+.is-light-map .balanced-index-facts i {
+  color: #526273;
+}
+
+.is-light-map .balanced-index {
+  border-color: rgba(15, 118, 110, 0.2);
+  background: #f0fdfa;
+}
+
+.is-light-map .balanced-index-main > span {
+  color: #134e4a;
+}
+
+.is-light-map .balanced-index-main > strong {
+  color: #0f766e;
+}
+
+.is-light-map .balanced-index-facts,
+.is-light-map .balanced-index-facts > div + div,
+.is-light-map .domain-section + .domain-section,
+.is-light-map .domain-dashboard-header,
+.is-light-map .domain-method-note {
+  border-color: rgba(15, 23, 42, 0.1);
+}
+
+.is-light-map .domain-coverage-list button.is-active {
+  background: #f0fdfa;
+  outline-color: rgba(15, 118, 110, 0.3);
+}
+
+@media (max-width: 560px) {
+  .balanced-index-main > strong { font-size: 1.55rem; }
+  .domain-coverage-list button { grid-template-columns: 8px minmax(110px, 1fr) 38px; }
+  .domain-bar { display: none; }
+}
+
 .map-toolbar a {
   position: relative;
   width: 38px;

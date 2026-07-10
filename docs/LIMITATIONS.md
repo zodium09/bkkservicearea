@@ -8,3 +8,6 @@
 - Turn restrictions are stored in `turn_restrictions`, but enforcement is still incremental.
 - Barrier handling currently filters `blocked_edges`; barrier snapping/import can be expanded for admin workflows.
 - Standard 10/15/30-minute contours reuse one graph build and one maximum-cost Dijkstra traversal.
+- Precomputed service POIs are currently selected mainly from keywords in BMA place names. Hospital, police, fire, school, and pier layers can include entrances, buildings, parking areas, control boxes, or other sub-facilities. Counts must not be interpreted as unique facilities until entity resolution is complete.
+- Dashboard coverage is area-based. It is not population-weighted and does not measure service quality, capacity, frequency, affordability, pedestrian comfort, disability access, or safety.
+- The four-domain index uses equal domain weights for communication and screening. It is not an official Bangkok policy target or a complete 15-minute-city index.
