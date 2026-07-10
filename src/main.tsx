@@ -319,7 +319,7 @@ function App() {
   const [analysisLimit, setAnalysisLimit] = useState<number>(900);
   const [analysisLayers, setAnalysisLayers] = useState<Record<string, boolean>>({
     serviceArea: true,
-    reachableRoads: true,
+    reachableRoads: false,
     startPoint: true,
     snappedNode: false,
     contour_10: false,
@@ -926,6 +926,9 @@ function App() {
         if (selected) {
           setAnalysisLayers((previous) => ({
             ...previous,
+            contour_10: false,
+            contour_15: false,
+            contour_30: false,
             [contourLayerKey(selected.minutes)]: true,
           }));
         }
@@ -1026,13 +1029,14 @@ function App() {
   );
 
   const visibleAnalysisLayerCount = useMemo(() => {
-    const baseKeys = ['startPoint', 'reachableRoads', 'snappedNode'];
-    const baseCount = baseKeys.filter((key) => analysisLayers[key]).length;
+    const baseCount = (inspectCoords && analysisLayers.startPoint ? 1 : 0)
+      + (analyzeResults && analysisLayers.reachableRoads ? 1 : 0)
+      + (analyzeResults && analysisLayers.snappedNode ? 1 : 0);
     const contourCount = contourResults.filter((contour) => analysisLayers[contourLayerKey(contour.minutes)]).length;
     const placeCount = analysisPlaceOptions.filter((option) => analysisPlaceLayers[option.key]).length;
     const distanceAreaCount = analysisCostType === 'distance' && analysisLayers.serviceArea ? 1 : 0;
     return baseCount + contourCount + placeCount + distanceAreaCount;
-  }, [analysisCostType, analysisLayers, analysisPlaceLayers, analysisPlaceOptions, contourResults]);
+  }, [analysisCostType, analysisLayers, analysisPlaceLayers, analysisPlaceOptions, analyzeResults, contourResults, inspectCoords]);
 
   const isLoadingNearbyPlaces = Boolean(analyzeResults) && Object.keys(ACCESSIBILITY_PALETTE).some((category) => (
     loadingLayers[`${category}-pois`] || !loadedAccessibilityData[`${category}-pois`]
@@ -1143,6 +1147,20 @@ function App() {
     setMessage('เลือกสถานที่หรือคลิกบนแผนที่เพื่อเริ่มวิเคราะห์การเข้าถึง');
   };
 
+  const handleUseMapCenter = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const center = map.getCenter();
+    setInspectCoords(center);
+    setSelectedPlaceName('จุดกึ่งกลางแผนที่');
+    setPlaceResults([]);
+    setPlaceSearchError(null);
+    setAnalyzeResults(null);
+    setContourResults([]);
+    setAnalyzeError(null);
+    setMessage('วางจุดวิเคราะห์ที่กึ่งกลางแผนที่แล้ว');
+  };
+
   const handleZoomDistrict = (code: string) => {
     if (!isFeatureCollection(districtsGeojson) || !mapRef.current) return;
     const feature = districtsGeojson.features.find((item: any) => districtStatsCode(item) === code);
@@ -1196,7 +1214,21 @@ function App() {
     <main className={`app-shell ${basemapMode === 'dark' ? 'is-dark-map' : 'is-light-map'}`}>
       {/* MAP STAGE */}
       <section className="map-stage">
-        <div id="map" className={`zoom-${currentZoom}`} aria-label="แผนที่วิเคราะห์พื้นที่บริการครบ 50 เขต กรุงเทพมหานคร" />
+        <div
+          id="map"
+          className={`zoom-${currentZoom} ${activeTab === 'analyze' && !inspectCoords ? 'is-picking-point' : ''}`}
+          aria-label="แผนที่วิเคราะห์พื้นที่บริการครบ 50 เขต กรุงเทพมหานคร"
+        />
+
+        {activeTab === 'analyze' && !inspectCoords && (
+          <div className="map-pick-guide" aria-live="polite">
+            <span className="map-pick-guide-icon"><MapPin size={24} /></span>
+            <div>
+              <strong>คลิกบนแผนที่เพื่อวางจุดเริ่มต้น</strong>
+              <small>หรือค้นหาสถานที่จากช่องด้านซ้ายบน</small>
+            </div>
+          </div>
+        )}
 
         {/* Map float toolbar */}
         <div className="map-toolbar" aria-label="Map tools">
@@ -1273,18 +1305,20 @@ function App() {
                 </div>
               )}
 
-              <div className={`selected-point-card is-map-control ${inspectCoords ? 'has-point' : ''}`}>
+              <div className={`selected-point-card is-map-control ${inspectCoords ? 'has-point' : 'is-awaiting'}`} aria-live="polite">
                 <MapPin size={20} />
                 <div>
-                  <span>จุดวิเคราะห์</span>
+                  <span>{inspectCoords ? 'จุดเริ่มต้นที่เลือก' : 'ขั้นตอนที่ 1 · เลือกจุดเริ่มต้น'}</span>
                   <strong>
                     {inspectCoords
                       ? selectedPlaceName || `${inspectCoords.lat.toFixed(6)}, ${inspectCoords.lng.toFixed(6)}`
-                      : 'ค้นหาสถานที่หรือคลิกบนแผนที่'}
+                      : 'คลิกตำแหน่งบนแผนที่ หรือค้นหาสถานที่'}
                   </strong>
-                  {inspectCoords && (
-                    <small>{inspectCoords.lat.toFixed(6)}, {inspectCoords.lng.toFixed(6)} · ลากหมุดเพื่อปรับจุดได้</small>
-                  )}
+                  <small>
+                    {inspectCoords
+                      ? `${inspectCoords.lat.toFixed(6)}, ${inspectCoords.lng.toFixed(6)} · ลากหมุดเพื่อปรับได้`
+                      : 'เลื่อนแผนที่แล้วใช้จุดกึ่งกลางก็ได้'}
+                  </small>
                 </div>
                 {inspectCoords && (
                   <button type="button" onClick={handleClearAnalysisPoint}>
@@ -1406,6 +1440,14 @@ function App() {
           {activeTab === 'dashboard' ? 'ภาพรวมการเข้าถึงบริการทั่วกรุงเทพฯ' : 'พื้นที่เข้าถึงจากจุดที่เลือก'}
         </div>
 
+        {activeTab === 'analyze' && analyzeResults && (
+          <div className="analysis-map-summary" aria-label="สรุปผลบนแผนที่">
+            <span>{analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance.toLocaleString()} เมตร`}</span>
+            <strong>{Number(analyzeResults.metrics.serviceAreaSqKm || 0).toLocaleString()} ตร.กม.</strong>
+            <small>{nearbyPlaces.length.toLocaleString()} สถานที่ · {analyzeResults.intersectingDistricts.length} เขต</small>
+          </div>
+        )}
+
         {activeTab === 'dashboard' && (
           <div className="coverage-map-legend" aria-label="คำอธิบายสีความครอบคลุม">
             <div><span>ระดับการเข้าถึง</span><strong>{ACCESSIBILITY_PALETTE[dashboardFocusCategory]?.name}</strong></div>
@@ -1482,13 +1524,37 @@ function App() {
         {activeTab === 'analyze' && (
           /* DYNAMIC ANALYSIS PANEL */
           <>
+            <section className={`point-workflow-card ${inspectCoords ? 'is-ready' : ''}`}>
+              <span className="section-step">1</span>
+              <div className="point-workflow-content">
+                <span>{inspectCoords ? 'พร้อมวิเคราะห์' : 'เริ่มจากเลือกตำแหน่ง'}</span>
+                <strong>
+                  {inspectCoords
+                    ? selectedPlaceName || 'จุดที่เลือกบนแผนที่'
+                    : 'เลือกจุดเริ่มต้นให้ชัดเจน'}
+                </strong>
+                <small>
+                  {inspectCoords
+                    ? `${inspectCoords.lat.toFixed(5)}, ${inspectCoords.lng.toFixed(5)}`
+                    : 'คลิกแผนที่ ค้นหาสถานที่ หรือวางหมุดที่กึ่งกลางแผนที่'}
+                </small>
+              </div>
+              <button
+                type="button"
+                onClick={inspectCoords ? handleClearAnalysisPoint : handleUseMapCenter}
+              >
+                <MapPin size={15} />
+                {inspectCoords ? 'เลือกใหม่' : 'ใช้จุดกึ่งกลาง'}
+              </button>
+            </section>
+
             <section className="workflow-card">
               <div className="section-header">
                 <div>
-                  <span className="section-step">1</span>
+                  <span className="section-step">2</span>
                   <div>
                     <h2>กำหนดการเดินทาง</h2>
-                    <p>เลือกวิธีเดินทางและระยะเวลาที่ต้องการ</p>
+                    <p>{inspectCoords ? 'เลือกวิธีเดินทางและระยะเวลาที่ต้องการ' : 'เลือกจุดเริ่มต้นก่อน แล้วจึงกำหนดการเดินทาง'}</p>
                   </div>
                 </div>
               </div>

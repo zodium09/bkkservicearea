@@ -17,7 +17,7 @@ interface LayerControlProps {
 
 const CORE_LAYERS = [
   ['startPoint', 'จุดเริ่มต้น'],
-  ['reachableRoads', 'โครงข่ายถนนที่เข้าถึงได้'],
+  ['reachableRoads', 'เส้นโครงข่ายถนน (เลือกแสดง)'],
   ['snappedNode', 'จุดเชื่อมเข้าถนน'],
 ] as const;
 
