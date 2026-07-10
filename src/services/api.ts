@@ -1,4 +1,4 @@
-import type { AnalyzeRequest, AnalyzeResponse } from '../types/gis';
+import type { AnalyzeContoursResponse, AnalyzeRequest, AnalyzeResponse, TrafficStatus } from '../types/gis';
 
 const LOCAL_API_ORIGIN = 'http://127.0.0.1:5174';
 
@@ -68,6 +68,22 @@ export async function analyzeServiceArea(request: AnalyzeRequest): Promise<Analy
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   });
+}
+
+export async function analyzeServiceAreaContours(request: AnalyzeRequest): Promise<AnalyzeContoursResponse> {
+  return requestJson<AnalyzeContoursResponse>('/api/analyze/contours', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...request, contoursMinutes: [10, 15, 30] }),
+  });
+}
+
+export async function getTrafficStatus(): Promise<TrafficStatus> {
+  return requestJson<TrafficStatus>('/api/traffic/status');
+}
+
+export async function getTrafficSegments(): Promise<any> {
+  return requestJson<any>('/api/traffic/segments');
 }
 
 export async function getStaticJson<T>(path: string): Promise<T> {

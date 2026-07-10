@@ -1,50 +1,82 @@
 const express = require('express');
 const db = require('../db/pool');
 const routing = require('../services/routing.service');
+const traffic = require('../services/traffic.service');
 const { normalizeAnalyzeRequest, validateAnalyzeRequest } = require('../utils/validation');
 
 const router = express.Router();
+
+async function executeAnalysis(request, health = null) {
+  const databaseHealth = health || await db.checkHealth();
+  if (!databaseHealth.connected || !databaseHealth.postgis || !databaseHealth.pgrouting) {
+    return routing.analyzeFallback(request);
+  }
+
+  try {
+    return await routing.analyzeWithPgRouting(db, request);
+  } catch (error) {
+    if (error.status) throw error;
+    const fallback = await routing.analyzeFallback(request);
+    fallback.pgRoutingError = error.message;
+    return fallback;
+  }
+}
+
+function sendAnalysisError(res, error) {
+  return res.status(error.status || 503).json({
+    error: true,
+    code: 'ANALYSIS_UNAVAILABLE',
+    message: 'ไม่สามารถคำนวณพื้นที่เข้าถึงได้ในขณะนี้',
+    detail: error.message,
+  });
+}
 
 router.post('/analyze', async (req, res) => {
   const request = normalizeAnalyzeRequest(req.body || {});
   const invalid = validateAnalyzeRequest(request);
   if (invalid) return res.status(invalid.status).json({ error: true, code: invalid.code, message: invalid.message });
 
-  const health = await db.checkHealth();
-  if (!health.connected || !health.postgis || !health.pgrouting) {
-    try {
-      const fallback = await routing.analyzeFallback(request);
-      return res.json(fallback);
-    } catch (error) {
-      return res.status(error.status || 503).json({
-        error: true,
-        code: 'ANALYSIS_UNAVAILABLE',
-        message: 'Database is not ready for pgRouting analysis and JavaScript fallback failed.',
-        detail: error.message,
-      });
-    }
+  try {
+    return res.json(await executeAnalysis(request));
+  } catch (error) {
+    return sendAnalysisError(res, error);
+  }
+});
+
+router.post('/analyze/contours', async (req, res) => {
+  const rawContours = Array.isArray(req.body?.contoursMinutes) ? req.body.contoursMinutes : [10, 15, 30];
+  const contoursMinutes = [...new Set(rawContours.map(Number)
+    .filter((value) => Number.isFinite(value) && value >= 1 && value <= 60))]
+    .sort((left, right) => left - right)
+    .slice(0, 5);
+  if (!contoursMinutes.length) {
+    return res.status(400).json({ error: true, code: 'INVALID_CONTOURS', message: 'กำหนดช่วงเวลาอย่างน้อย 1 ค่า' });
   }
 
+  const requests = contoursMinutes.map((minutes) => normalizeAnalyzeRequest({
+    ...(req.body || {}),
+    costType: 'time',
+    travelMinutes: minutes,
+    limit: minutes * 60,
+  }));
+  const invalid = validateAnalyzeRequest(requests[0]);
+  if (invalid) return res.status(invalid.status).json({ error: true, code: invalid.code, message: invalid.message });
+
   try {
-    const result = await routing.analyzeWithPgRouting(db, request);
-    return res.json(result);
-  } catch (error) {
-    if (!error.status) {
-      try {
-        const fallback = await routing.analyzeFallback(request);
-        fallback.pgRoutingError = error.message;
-        return res.json(fallback);
-      } catch (fallbackError) {
-        return res.status(fallbackError.status || 500).json({
-          error: true,
-          code: 'ROUTING_AND_FALLBACK_FAILED',
-          message: 'pgRouting failed and fallback analysis was unavailable.',
-          detail: fallbackError.message,
-          pgRoutingDetail: error.message,
-        });
-      }
+    const health = await db.checkHealth();
+    const contours = [];
+    for (const request of requests) {
+      const result = await executeAnalysis(request, health);
+      contours.push({ minutes: request.limit / 60, result });
     }
-    return res.status(error.status).json({ error: true, code: 'ROUTING_FAILED', message: error.message });
+    return res.json({
+      type: 'ServiceAreaContours',
+      generatedAt: new Date().toISOString(),
+      contours,
+      traffic: await traffic.status(),
+    });
+  } catch (error) {
+    return sendAnalysisError(res, error);
   }
 });
 

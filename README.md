@@ -83,3 +83,39 @@ npm run test:api
    - ประมวลผลหาพื้นที่และขอบเขตเข้าถึงจริงตามระบบเครือข่ายถนนกรุงเทพฯ ผ่าน pgRouting ความละเอียดสูงภายในเวลาเสี้ยววินาที
    - แสดงสถิติเชิงปริมาณ (ขนาดพื้นที่ ตร.กม., ความยาวถนนรวมที่เข้าถึง กม., จำนวนทางร่วมแยก) และแสดงรายชื่อเขตทั้งหมดที่ขอบเขตบริการนี้คาบเกี่ยวพาดผ่าน
    - **ส่งออกข้อมูล (Export GeoJSON)**: ดาวน์โหลดผลลัพธ์ขอบเขตพื้นที่บริการไปเปิดในโปรแกรม GIS อื่น ๆ ได้ทันที
+
+## Phase 1 Accessibility Intelligence
+
+- พื้นที่เข้าถึงซ้อนกัน 10/15/30 นาที และสลับดูสรุปแต่ละช่วงเวลาได้
+- ประมาณประชากรที่เข้าถึงได้จากข้อมูลประชากรรายเขตของกรุงเทพมหานคร ปี 2566
+- แสดงจำนวนและตำแหน่งสถานที่สำคัญภายในพื้นที่เข้าถึง
+- มี data catalog ระบุแหล่งข้อมูล ผู้เผยแพร่ ความถี่ และหมายเหตุด้าน license
+- เชื่อม traffic overlay ผ่าน GeoJSON feed ที่ได้รับอนุญาต และ fallback ไปยัง BMA Traffic viewer
+- มีชุด golden service-area สำหรับ regression test จุดตัวอย่างในกรุงเทพฯ
+
+### เตรียมฐานข้อมูล Phase 1
+
+```bash
+npm run db:migrate
+npm run import:phase1-data
+```
+
+### Realtime traffic
+
+ระบบไม่ scrape endpoint ที่ไม่ได้เผยแพร่เป็น API หากได้รับ GeoJSON feed ที่มีสิทธิใช้งาน ให้กำหนด:
+
+```bash
+TRAFFIC_GEOJSON_URL=https://provider.example/traffic.geojson
+TRAFFIC_CACHE_TTL_SECONDS=60
+TRAFFIC_FETCH_TIMEOUT_MS=8000
+```
+
+GeoJSON ควรเป็น `FeatureCollection` ของเส้นถนน และอาจมี `speed_kph`, `congestion`, `level`, `status` หรือ `color` ใน properties
+
+### Golden service-area QA
+
+เปิด API ที่พอร์ต 5174 แล้วรัน:
+
+```bash
+npm run test:golden
+```

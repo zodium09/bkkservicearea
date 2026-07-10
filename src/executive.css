@@ -1262,3 +1262,203 @@
   .analysis-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .nearby-map-marker { width: 22px; height: 22px; }
 }
+
+.map-toolbar a {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  color: #dcebf3;
+  background: rgba(13, 27, 35, 0.84);
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+
+.map-toolbar a svg:last-child {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  color: #5eead4;
+}
+
+.map-toolbar a:hover {
+  color: #052a2a;
+  background: #5eead4;
+}
+
+.contour-time-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.contour-time-options button,
+.contour-result-selector button {
+  min-height: 34px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 8px;
+  color: #94a3b8;
+  background: rgba(15, 23, 42, 0.2);
+  font: inherit;
+  font-size: 0.69rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.contour-time-options button:hover,
+.contour-time-options button.is-active,
+.contour-result-selector button:hover,
+.contour-result-selector button.is-active {
+  border-color: rgba(45, 212, 191, 0.42);
+  color: #ecfeff;
+  background: rgba(13, 148, 136, 0.18);
+}
+
+.contour-map-legend {
+  position: absolute;
+  z-index: 850;
+  left: 22px;
+  bottom: 22px;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 10px;
+  color: #cbd5e1;
+  background: rgba(9, 18, 24, 0.82);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(15px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.62rem;
+}
+
+.contour-map-legend > strong {
+  color: #f8fafc;
+  font-size: 0.66rem;
+}
+
+.contour-map-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.contour-map-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.contour-result-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.contour-result-selector button {
+  min-height: 44px;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
+}
+
+.contour-result-selector button strong {
+  color: inherit;
+  font-size: 0.9rem;
+}
+
+.contour-result-selector button span {
+  font-size: 0.58rem;
+}
+
+.population-impact-card {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 10px;
+  padding: 12px;
+  border: 1px solid rgba(45, 212, 191, 0.2);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(45, 212, 191, 0.13), transparent 38%),
+    rgba(13, 148, 136, 0.08);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.population-impact-card > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.population-impact-card span,
+.population-impact-card small {
+  color: #94a3b8;
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.population-impact-card > div:first-child strong {
+  color: #5eead4;
+  font-size: 1.22rem;
+}
+
+.population-impact-card strong i {
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-style: normal;
+}
+
+.population-impact-share {
+  min-width: 78px;
+  display: grid;
+  text-align: right;
+}
+
+.population-impact-share strong {
+  color: #67e8f9;
+  font-size: 1rem;
+}
+
+.population-impact-card small {
+  grid-column: 1 / -1;
+  color: #64748b;
+  font-size: 0.56rem;
+  line-height: 1.4;
+}
+
+.is-light-map .contour-time-options button,
+.is-light-map .contour-result-selector button {
+  border-color: rgba(15, 23, 42, 0.08);
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.86);
+}
+
+.is-light-map .contour-time-options button.is-active,
+.is-light-map .contour-result-selector button.is-active {
+  border-color: rgba(13, 148, 136, 0.3);
+  color: #0f766e;
+  background: #f0fdfa;
+}
+
+.is-light-map .population-impact-card {
+  border-color: rgba(13, 148, 136, 0.15);
+  background: rgba(240, 253, 250, 0.78);
+}
+
+.is-light-map .population-impact-card > div:first-child strong { color: #0f766e; }
+.is-light-map .population-impact-share strong { color: #0369a1; }
+
+@media (max-width: 560px) {
+  .contour-map-legend {
+    left: 12px;
+    bottom: 12px;
+    max-width: calc(100vw - 24px);
+    flex-wrap: wrap;
+  }
+}

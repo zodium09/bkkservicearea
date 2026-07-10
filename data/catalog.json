@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "updatedAt": "2026-07-10T00:00:00+07:00",
+  "sources": [
+    {
+      "id": "bma-district-boundaries",
+      "title": "ขอบเขตการปกครอง 50 เขต",
+      "publisher": "กรุงเทพมหานคร",
+      "role": "authoritative_core",
+      "format": "GeoJSON",
+      "refresh": "ตามรอบปรับปรุงของหน่วยงาน",
+      "license": "ต้องตรวจสอบกับเจ้าของข้อมูล",
+      "status": "active"
+    },
+    {
+      "id": "bma-population-district-2023",
+      "title": "ประชากรกรุงเทพมหานครจำแนกตามเขต",
+      "publisher": "กรุงเทพมหานคร",
+      "role": "authoritative_context",
+      "format": "CSV",
+      "refresh": "รายปี",
+      "referenceYear": 2023,
+      "license": "License not specified",
+      "url": "https://data.bangkok.go.th/th/dataset/bkkpopulationdistric/resource/0e77f0fd-17c7-4bd3-ba53-1fc9c46a8c3e",
+      "status": "active"
+    },
+    {
+      "id": "openstreetmap-road-network",
+      "title": "โครงข่ายถนนและทางเดิน OpenStreetMap",
+      "publisher": "OpenStreetMap contributors",
+      "role": "open_completion",
+      "format": "OSM PBF / PostGIS",
+      "refresh": "ตามรอบนำเข้าของระบบ",
+      "license": "ODbL 1.0",
+      "url": "https://www.openstreetmap.org/copyright",
+      "status": "active"
+    },
+    {
+      "id": "bma-traffic-viewer",
+      "title": "BMA Traffic",
+      "publisher": "สำนักการจราจรและขนส่ง กรุงเทพมหานคร",
+      "role": "event_streams",
+      "format": "Public realtime viewer",
+      "refresh": "ปัจจุบัน",
+      "license": "ไม่พบ public API license ที่ระบุชัด",
+      "url": "https://cpudapp.bangkok.go.th/bmatraffic/",
+      "status": "viewer_only",
+      "note": "ระบบรองรับ TRAFFIC_GEOJSON_URL เมื่อได้รับ feed ที่ได้รับอนุญาต"
+    }
+  ]
+}

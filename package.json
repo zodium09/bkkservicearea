@@ -11,8 +11,10 @@
     "build": "vite build",
     "test": "node --test test/api/*.test.js",
     "test:api": "node --test test/api/*.test.js",
+    "test:golden": "node scripts/validate-golden-service-areas.js",
     "db:migrate": "node scripts/migrate-db.js",
     "import:osm-network": "node scripts/import-osm-network.js",
+    "import:phase1-data": "node scripts/import-phase1-data.js",
     "db:topology": "node scripts/build-topology.js",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "start": "node server.js"

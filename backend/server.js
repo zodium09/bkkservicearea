@@ -5,6 +5,7 @@ const healthRoutes = require('./routes/health.routes');
 const layerRoutes = require('./routes/layers.routes');
 const analyzeRoutes = require('./routes/analyze.routes');
 const networkRoutes = require('./routes/network.routes');
+const trafficRoutes = require('./routes/traffic.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5174;
@@ -72,6 +73,7 @@ app.use('/api', healthRoutes);
 app.use('/api', layerRoutes);
 app.use('/api', analyzeRoutes);
 app.use('/api', networkRoutes);
+app.use('/api', trafficRoutes);
 
 app.use(express.static(path.join(network.ROOT, 'dist')));
 

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "victory-monument-walk-15",
+    "name": "อนุสาวรีย์ชัยสมรภูมิ เดิน 15 นาที",
+    "lat": 13.7649,
+    "lng": 100.5383,
+    "mode": "walk",
+    "minutes": 15,
+    "expectedDistrictsAny": ["ราชเทวี", "พญาไท"],
+    "minimumAreaSqKm": 0.01
+  },
+  {
+    "id": "sathon-cycle-15",
+    "name": "สาทร จักรยาน 15 นาที",
+    "lat": 13.7203,
+    "lng": 100.5272,
+    "mode": "bike",
+    "minutes": 15,
+    "expectedDistrictsAny": ["สาทร", "บางรัก", "ยานนาวา"],
+    "minimumAreaSqKm": 0.05
+  },
+  {
+    "id": "central-bangkok-drive-30",
+    "name": "กรุงเทพชั้นใน รถยนต์ 30 นาที",
+    "lat": 13.7563,
+    "lng": 100.5018,
+    "mode": "drive",
+    "minutes": 30,
+    "expectedDistrictsAny": ["พระนคร", "ดุสิต", "ราชเทวี"],
+    "minimumAreaSqKm": 0.1
+  }
+]

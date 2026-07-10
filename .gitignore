@@ -7,6 +7,8 @@ output/
 data/raw/
 data/processed/*
 !data/processed/accessibility/
+!data/processed/population/
+!data/processed/population/district-population.json
 !data/processed/bma-layers/
 data/processed/bma-layers/*
 !data/processed/bma-layers/layer-13.geojson

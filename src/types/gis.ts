@@ -39,4 +39,31 @@ export interface AnalyzeResponse {
   reachableRoads: any;
   networkNodes?: any;
   intersectingDistricts: Array<{ id: string | number; name: string; properties?: Record<string, any> }>;
+  population?: {
+    reachedEstimate: number;
+    coveredDistrictPopulation: number;
+    bangkokPopulation: number;
+    referenceYear: number | null;
+    method: string;
+    caveat: string;
+  };
+}
+
+export interface AnalyzeContoursResponse {
+  type: 'ServiceAreaContours';
+  generatedAt: string;
+  contours: Array<{ minutes: number; result: AnalyzeResponse }>;
+  traffic?: TrafficStatus;
+}
+
+export interface TrafficStatus {
+  configured: boolean;
+  available: boolean;
+  provider: string;
+  viewerUrl: string;
+  lastUpdated: string | null;
+  featureCount: number;
+  refreshSeconds: number;
+  error?: string | null;
+  note?: string;
 }

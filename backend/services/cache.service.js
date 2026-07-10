@@ -1,11 +1,17 @@
 const crypto = require('crypto');
 
 function cacheKey({ facilities, mode, costType, limit }) {
+  // Include the response schema version so stale records from an older
+  // deployment are never returned after accessibility metrics change.
+  const cacheVersion = process.env.ANALYSIS_CACHE_VERSION || 'phase1-v1';
   const points = facilities
     .map((facility) => `${Number(facility.lat).toFixed(5)},${Number(facility.lng).toFixed(5)}`)
     .sort()
     .join('|');
-  return crypto.createHash('sha1').update(`${points}:${mode}:${costType}:${Number(limit).toFixed(2)}`).digest('hex');
+  return crypto
+    .createHash('sha1')
+    .update(`${cacheVersion}:${points}:${mode}:${costType}:${Number(limit).toFixed(2)}`)
+    .digest('hex');
 }
 
 async function get(db, key, ttlSeconds = Number(process.env.SERVICE_AREA_CACHE_TTL_SECONDS) || 86400) {

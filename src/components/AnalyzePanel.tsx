@@ -47,15 +47,30 @@ export function AnalyzePanel(props: AnalyzePanelProps) {
         <span>เดินทางได้ภายใน</span>
         <span style={{ color: '#0f766e' }}>{limitLabel}</span>
       </div>
-      <input
-        type="range"
-        min={props.costType === 'time' ? 300 : 300}
-        max={props.costType === 'time' ? 1800 : 10000}
-        step={props.costType === 'time' ? 300 : 100}
-        value={props.limit}
-        onChange={(event) => props.onLimitChange(Number(event.target.value))}
-        style={{ width: '100%', cursor: 'pointer', accentColor: '#0f766e' }}
-      />
+      {props.costType === 'time' ? (
+        <div className="contour-time-options">
+          {[10, 15, 30].map((minutes) => (
+            <button
+              key={minutes}
+              type="button"
+              className={props.limit === minutes * 60 ? 'is-active' : ''}
+              onClick={() => props.onLimitChange(minutes * 60)}
+            >
+              {minutes} นาที
+            </button>
+          ))}
+        </div>
+      ) : (
+        <input
+          type="range"
+          min={300}
+          max={10000}
+          step={100}
+          value={props.limit}
+          onChange={(event) => props.onLimitChange(Number(event.target.value))}
+          style={{ width: '100%', cursor: 'pointer', accentColor: '#0f766e' }}
+        />
+      )}
 
       <button onClick={props.onAnalyze} disabled={props.loading || props.disabled} className="primary-action" type="button">
         <Sliders size={18} />

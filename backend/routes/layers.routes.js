@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const network = require('../services/network.service');
+const population = require('../services/population.service');
 
 const router = express.Router();
 
@@ -111,6 +112,22 @@ router.get('/accessibility/stats', (_req, res) => {
     res.json(JSON.parse(fs.readFileSync(statsPath, 'utf8')));
   } catch (error) {
     res.status(500).json({ error: 'Failed to read accessibility stats', detail: error.message });
+  }
+});
+
+router.get('/population/districts', (_req, res) => {
+  const data = population.publicDataset();
+  if (!data) return res.status(404).json({ error: 'Population dataset is not available.' });
+  return res.json(data);
+});
+
+router.get('/data/catalog', (_req, res) => {
+  const catalogPath = path.join(network.ROOT, 'data', 'catalog.json');
+  if (!fs.existsSync(catalogPath)) return res.status(404).json({ error: 'Data catalog is not available.' });
+  try {
+    return res.json(JSON.parse(fs.readFileSync(catalogPath, 'utf8')));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to read data catalog', detail: error.message });
   }
 });
 

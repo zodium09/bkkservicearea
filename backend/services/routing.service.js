@@ -2,6 +2,7 @@ const turf = require('@turf/turf');
 const { edgeSql } = require('../db/routing.queries');
 const cache = require('./cache.service');
 const network = require('./network.service');
+const population = require('./population.service');
 
 function nodeKey(coord) {
   const precision = Number(process.env.FALLBACK_TOPOLOGY_COORD_PRECISION) || 5;
@@ -570,6 +571,7 @@ async function intersectingDistricts(serviceArea) {
         id: district.id,
         name: district.properties?.DNAME || district.properties?.DISTRICT_N || district.properties?.NAME || district.properties?.name || 'ไม่ทราบชื่อเขต',
         properties: district.properties,
+        ...population.enrichDistrict(serviceAreaFeature, district),
       }));
   } catch (err) {
     console.error('District intersection calculation failed:', err.message);
@@ -721,6 +723,7 @@ function formatResponse(context) {
     reachedNodes: networkNodesReached,
     cacheHit: false,
   };
+  const populationSummary = population.summarize(intersectingDistricts);
 
   return {
     engine,
@@ -742,6 +745,12 @@ function formatResponse(context) {
       fallbackTopology,
       averageSnapDistanceMeters,
       intersectingDistricts: intersectingDistricts.length,
+      populationReachedEstimate: populationSummary.reachedEstimate,
+      populationCoveredDistricts: populationSummary.coveredDistrictPopulation,
+      bangkokPopulation: populationSummary.bangkokPopulation,
+      populationReferenceYear: populationSummary.referenceYear,
+      populationMethod: populationSummary.method,
+      populationCaveat: populationSummary.caveat,
       mode: request.mode,
       costType: request.costType,
       limit: request.limit,
@@ -751,6 +760,7 @@ function formatResponse(context) {
     reachableRoads,
     serviceArea,
     intersectingDistricts,
+    population: populationSummary,
   };
 }
 

@@ -16,6 +16,8 @@ import {
   Sun,
   MapPin,
   Download,
+  Activity,
+  ExternalLink,
   Layers,
   X,
 } from 'lucide-react';
@@ -24,12 +26,17 @@ import './executive.css';
 import {
   AccessibilityConfig,
 } from './types';
-import { analyzeServiceArea } from './services/api';
+import {
+  analyzeServiceArea,
+  analyzeServiceAreaContours,
+  getTrafficSegments,
+  getTrafficStatus,
+} from './services/api';
 import { AnalyzePanel } from './components/AnalyzePanel';
 import { LayerControl } from './components/LayerControl';
 import { ExecutiveDashboard } from './components/ExecutiveDashboard';
 import { NearbyPlaces } from './components/NearbyPlaces';
-import type { CostType, TravelMode } from './types/gis';
+import type { AnalyzeResponse, CostType, TrafficStatus, TravelMode } from './types/gis';
 import type { AccessibilityStats, DashboardTravelMode } from './types/dashboard';
 import type { NearbyPlace } from './types/nearby';
 
@@ -200,6 +207,17 @@ function coverageColor(value: number): string {
   return '#ef4444';
 }
 
+function trafficColor(properties: Record<string, any> = {}): string {
+  const explicit = String(properties.color || '');
+  if (/^#[0-9a-f]{6}$/i.test(explicit)) return explicit;
+  const level = String(properties.congestion || properties.level || properties.status || '').toLowerCase();
+  if (['severe', 'heavy', 'jam', 'ติดขัดมาก'].some((value) => level.includes(value))) return '#ef4444';
+  if (['moderate', 'slow', 'ติดขัด', 'ช้า'].some((value) => level.includes(value))) return '#f59e0b';
+  const speed = Number(properties.speed_kph ?? properties.speed ?? properties.current_speed);
+  if (Number.isFinite(speed)) return speed < 15 ? '#ef4444' : speed < 30 ? '#f59e0b' : '#22c55e';
+  return '#22c55e';
+}
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const radians = (degrees: number) => degrees * Math.PI / 180;
   const deltaLat = radians(lat2 - lat1);
@@ -298,6 +316,10 @@ function App() {
     onewayRoads: false,
   });
   const [analyzeResults, setAnalyzeResults] = useState<any>(null);
+  const [contourResults, setContourResults] = useState<Array<{ minutes: number; result: AnalyzeResponse }>>([]);
+  const [trafficStatus, setTrafficStatus] = useState<TrafficStatus | null>(null);
+  const [trafficData, setTrafficData] = useState<any>(null);
+  const [showTraffic, setShowTraffic] = useState<boolean>(false);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const placeSearchRequestRef = useRef<number>(0);
@@ -314,6 +336,7 @@ function App() {
     dynamicServiceArea: L.GeoJSON | null;
     dynamicReachableRoads: L.GeoJSON | null;
     dynamicNearbyPlaces: L.LayerGroup | null;
+    traffic: L.GeoJSON | null;
   }>({
     basemap: null,
     districts: null,
@@ -325,6 +348,7 @@ function App() {
     dynamicServiceArea: null,
     dynamicReachableRoads: null,
     dynamicNearbyPlaces: null,
+    traffic: null,
   });
 
   // Fetch initial data directly from static assets
@@ -351,6 +375,29 @@ function App() {
         setDashboardStats(data as AccessibilityStats);
       })
       .catch((e) => console.error('Failed to load accessibility statistics:', e));
+
+    getTrafficStatus()
+      .then(async (status) => {
+        setTrafficStatus(status);
+        if (status.available) {
+          const segments = await getTrafficSegments();
+          if (isFeatureCollection(segments)) {
+            setTrafficData(segments);
+            setShowTraffic(true);
+          }
+        }
+      })
+      .catch(() => {
+        setTrafficStatus({
+          configured: false,
+          available: false,
+          provider: 'bma-public-viewer',
+          viewerUrl: 'https://cpudapp.bangkok.go.th/bmatraffic/',
+          lastUpdated: null,
+          featureCount: 0,
+          refreshSeconds: 60,
+        });
+      });
 
   }, []);
 
@@ -415,10 +462,12 @@ function App() {
     map.createPane('districts');
     map.createPane('analysisArea');
     map.createPane('servicePoints');
+    map.createPane('traffic');
 
     map.getPane('districts')!.style.zIndex = '415';
     map.getPane('analysisArea')!.style.zIndex = '430';
     map.getPane('servicePoints')!.style.zIndex = '455';
+    map.getPane('traffic')!.style.zIndex = '445';
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -434,6 +483,7 @@ function App() {
         setPlaceResults([]);
         setPlaceSearchError(null);
         setAnalyzeResults(null);
+        setContourResults([]);
         setAnalyzeError(null);
       }
     });
@@ -454,6 +504,27 @@ function App() {
       className: `leaflet-basemap-${basemapMode}`,
     }).addTo(map);
   }, [basemapMode]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    layersRef.current.traffic?.remove();
+    layersRef.current.traffic = null;
+    if (!map || !showTraffic || !isFeatureCollection(trafficData)) return;
+    layersRef.current.traffic = L.geoJSON(trafficData, {
+      pane: 'traffic',
+      style: (feature) => ({
+        color: trafficColor(feature?.properties || {}),
+        weight: 5,
+        opacity: 0.86,
+      }),
+      onEachFeature: (feature, layer) => {
+        const name = feature.properties?.name || feature.properties?.road_name || 'สภาพจราจร';
+        const speed = Number(feature.properties?.speed_kph ?? feature.properties?.speed ?? feature.properties?.current_speed);
+        const detail = Number.isFinite(speed) ? `<br>ความเร็ว ${Math.round(speed)} กม./ชม.` : '';
+        layer.bindTooltip(`<strong>${escapeHtml(name)}</strong>${detail}`, { sticky: true });
+      },
+    }).addTo(map);
+  }, [showTraffic, trafficData]);
 
   const useCircleMarkers = useMemo(() => currentZoom < 14, [currentZoom]);
 
@@ -658,6 +729,7 @@ function App() {
     if (activeTab === 'dashboard') {
       setInspectCoords(null);
       setAnalyzeResults(null);
+      setContourResults([]);
       setAnalyzeError(null);
       
       const map = mapRef.current;
@@ -705,6 +777,7 @@ function App() {
         setInspectCoords(position);
         setSelectedPlaceName('ตำแหน่งที่ปรับจากการลากหมุด');
         setAnalyzeResults(null);
+        setContourResults([]);
         setAnalyzeError(null);
         setMessage('ปรับจุดวิเคราะห์แล้ว กดวิเคราะห์อีกครั้งเพื่อคำนวณพื้นที่บริการใหม่');
       });
@@ -727,15 +800,35 @@ function App() {
     if (activeTab === 'analyze' && analyzeResults) {
       const drawnBounds: L.LatLngBounds[] = [];
       if (analysisLayers.serviceArea && analyzeResults.serviceArea?.type === 'FeatureCollection' && analyzeResults.serviceArea.features?.length) {
-        layersRef.current.dynamicServiceArea = L.geoJSON(analyzeResults.serviceArea, {
+        const contourCollection = analysisCostType === 'time' && contourResults.length
+          ? {
+              type: 'FeatureCollection',
+              features: [...contourResults]
+                .sort((left, right) => right.minutes - left.minutes)
+                .flatMap((contour) => (contour.result.serviceArea?.features || []).map((feature: any) => ({
+                  ...feature,
+                  properties: { ...(feature.properties || {}), contourMinutes: contour.minutes },
+                }))),
+            }
+          : analyzeResults.serviceArea;
+        layersRef.current.dynamicServiceArea = L.geoJSON(contourCollection as any, {
           pane: 'analysisArea',
-          style: {
-            color: '#7c3aed',
-            weight: 2.5,
-            opacity: 0.9,
-            fillColor: '#a78bfa',
-            fillOpacity: 0.25,
-          }
+          style: (feature) => {
+            const minutes = Number(feature?.properties?.contourMinutes || analysisLimit / 60);
+            const color = minutes === 10 ? '#14b8a6' : minutes === 15 ? '#38bdf8' : '#8b5cf6';
+            const selected = minutes === analysisLimit / 60;
+            return {
+              color,
+              weight: selected ? 3 : 1.8,
+              opacity: selected ? 1 : 0.72,
+              fillColor: color,
+              fillOpacity: selected ? 0.24 : 0.1,
+            };
+          },
+          onEachFeature: (feature, layer) => {
+            const minutes = feature.properties?.contourMinutes;
+            if (minutes) layer.bindTooltip(`พื้นที่ที่เข้าถึงได้ภายใน ${minutes} นาที`, { sticky: true });
+          },
         }).addTo(map);
         drawnBounds.push(layersRef.current.dynamicServiceArea.getBounds());
       }
@@ -773,16 +866,17 @@ function App() {
         map.fitBounds(combined, { padding: [36, 36], maxZoom: 15 });
       }
     }
-  }, [analyzeResults, activeTab, analysisLayers]);
+  }, [analyzeResults, activeTab, analysisLayers, contourResults, analysisCostType, analysisLimit]);
 
   const handleAnalyze = async () => {
     if (!inspectCoords) return;
     setIsAnalyzing(true);
     setAnalyzeError(null);
     setAnalyzeResults(null);
+    setContourResults([]);
 
     try {
-      const data = await analyzeServiceArea({
+      const request = {
         facilities: [
           {
             lat: inspectCoords.lat,
@@ -794,8 +888,20 @@ function App() {
         mode: analysisMode,
         costType: analysisCostType,
         limit: analysisCostType === 'time' ? analysisLimit : analyzeDistance
-      });
-      setAnalyzeResults(data);
+      };
+      if (analysisCostType === 'time') {
+        const response = await analyzeServiceAreaContours(request);
+        setContourResults(response.contours);
+        const selectedMinutes = analysisLimit / 60;
+        const selected = response.contours.find((contour) => contour.minutes === selectedMinutes)
+          || response.contours.find((contour) => contour.minutes === 15)
+          || response.contours[0];
+        setAnalyzeResults(selected?.result || null);
+        if (response.traffic) setTrafficStatus(response.traffic);
+      } else {
+        const data = await analyzeServiceArea(request);
+        setAnalyzeResults(data);
+      }
       const label = analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance} ม.`;
       setMessage(`แสดงพื้นที่ที่เข้าถึงได้ภายใน ${label} พร้อมสถานที่สำคัญในบริเวณแล้ว`);
     } catch (e: any) {
@@ -936,6 +1042,12 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    if (analysisCostType !== 'time' || !contourResults.length) return;
+    const selected = contourResults.find((contour) => contour.minutes === analysisLimit / 60);
+    if (selected) setAnalyzeResults(selected.result);
+  }, [analysisCostType, analysisLimit, contourResults]);
+
   const handleSelectPlace = (place: PlaceSearchResult) => {
     const lat = Number(place.lat);
     const lng = Number(place.lon);
@@ -949,6 +1061,7 @@ function App() {
     setPlaceResults([]);
     setPlaceSearchError(null);
     setAnalyzeResults(null);
+    setContourResults([]);
     setAnalyzeError(null);
     mapRef.current?.setView(coords, 16);
     setMessage(`กำหนดจุดวิเคราะห์: ${label}`);
@@ -958,6 +1071,7 @@ function App() {
     setInspectCoords(null);
     setSelectedPlaceName('');
     setAnalyzeResults(null);
+    setContourResults([]);
     setAnalyzeError(null);
     setPlaceSearchError(null);
     setMessage('เลือกสถานที่หรือคลิกบนแผนที่เพื่อเริ่มวิเคราะห์การเข้าถึง');
@@ -1034,6 +1148,26 @@ function App() {
           >
             {basemapMode === 'light' ? <Moon size={18} /> : <Sun size={18} />}
           </button>
+          {trafficStatus?.available ? (
+            <button
+              type="button"
+              className={showTraffic ? 'is-active' : ''}
+              onClick={() => setShowTraffic((visible) => !visible)}
+              title={showTraffic ? 'ซ่อนสภาพจราจรสด' : 'แสดงสภาพจราจรสด'}
+            >
+              <Activity size={18} />
+            </button>
+          ) : (
+            <a
+              href={trafficStatus?.viewerUrl || 'https://cpudapp.bangkok.go.th/bmatraffic/'}
+              target="_blank"
+              rel="noreferrer"
+              title="เปิด BMA Traffic"
+            >
+              <Activity size={18} />
+              <ExternalLink size={10} />
+            </a>
+          )}
         </div>
 
         <div className={`webmap-control-stack ${activeTab === 'analyze' ? 'has-search' : 'only-layers'}`}>
@@ -1211,6 +1345,15 @@ function App() {
             </ul>
           </div>
         )}
+
+        {activeTab === 'analyze' && contourResults.length > 0 && (
+          <div className="contour-map-legend" aria-label="ช่วงเวลาพื้นที่เข้าถึง">
+            <strong>พื้นที่ตามเวลา</strong>
+            <span><i style={{ background: '#14b8a6' }} />10 นาที</span>
+            <span><i style={{ background: '#38bdf8' }} />15 นาที</span>
+            <span><i style={{ background: '#8b5cf6' }} />30 นาที</span>
+          </div>
+        )}
       </section>
 
       {/* CONTROL SIDEBAR */}
@@ -1307,6 +1450,40 @@ function App() {
                     </h2>
                   </div>
                 </div>
+
+                {contourResults.length > 0 && (
+                  <div className="contour-result-selector" aria-label="เลือกช่วงเวลาสรุปผล">
+                    {contourResults.map((contour) => (
+                      <button
+                        key={contour.minutes}
+                        type="button"
+                        className={analysisLimit / 60 === contour.minutes ? 'is-active' : ''}
+                        onClick={() => setAnalysisLimit(contour.minutes * 60)}
+                      >
+                        <strong>{contour.minutes}</strong>
+                        <span>นาที</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {analyzeResults.population?.reachedEstimate > 0 && (
+                  <div className="population-impact-card">
+                    <div>
+                      <span>ประชากรที่คาดว่าเข้าถึงได้</span>
+                      <strong>{Number(analyzeResults.population.reachedEstimate).toLocaleString()} <i>คน</i></strong>
+                    </div>
+                    <div className="population-impact-share">
+                      <strong>
+                        {analyzeResults.population.bangkokPopulation
+                          ? ((analyzeResults.population.reachedEstimate / analyzeResults.population.bangkokPopulation) * 100).toFixed(1)
+                          : '0.0'}%
+                      </strong>
+                      <span>ของประชากรทะเบียน กทม.</span>
+                    </div>
+                    <small>ค่าประมาณจากประชากรรายเขต ปี {analyzeResults.population.referenceYear} และสัดส่วนพื้นที่ที่ครอบคลุม</small>
+                  </div>
+                )}
 
                 <div className="analysis-overview-grid">
                   <div className="analysis-overview-item is-area">
