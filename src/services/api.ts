@@ -19,7 +19,7 @@ function apiBases(): string[] {
   }
 
   if (window.location.hostname.endsWith('.vercel.app')) {
-    return ['', LOCAL_API_ORIGIN];
+    return [''];
   }
 
   return [''];
@@ -71,11 +71,26 @@ export async function analyzeServiceArea(request: AnalyzeRequest): Promise<Analy
 }
 
 export async function analyzeServiceAreaContours(request: AnalyzeRequest): Promise<AnalyzeContoursResponse> {
-  return requestJson<AnalyzeContoursResponse>('/api/analyze/contours', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...request, contoursMinutes: [10, 15, 30] }),
-  });
+  try {
+    return await requestJson<AnalyzeContoursResponse>('/api/analyze/contours', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...request, contoursMinutes: [10, 15, 30] }),
+    });
+  } catch (contourError) {
+    // Keep the core analysis usable while an older or resource-constrained API
+    // deployment is being upgraded. The UI receives the selected contour only.
+    try {
+      const result = await analyzeServiceArea(request);
+      return {
+        type: 'ServiceAreaContours',
+        generatedAt: new Date().toISOString(),
+        contours: [{ minutes: result.metrics.travelMinutes, result }],
+      };
+    } catch {
+      throw contourError;
+    }
+  }
 }
 
 export async function getTrafficStatus(): Promise<TrafficStatus> {
