@@ -44,7 +44,7 @@ export function AnalyzePanel(props: AnalyzePanelProps) {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#64748b', fontWeight: 600, marginBottom: '6px' }}>
-        <span>ขอบเขตวิเคราะห์</span>
+        <span>เดินทางได้ภายใน</span>
         <span style={{ color: '#0f766e' }}>{limitLabel}</span>
       </div>
       <input
@@ -59,7 +59,7 @@ export function AnalyzePanel(props: AnalyzePanelProps) {
 
       <button onClick={props.onAnalyze} disabled={props.loading || props.disabled} className="primary-action" type="button">
         <Sliders size={18} />
-        <span>{props.loading ? 'กำลังวิเคราะห์...' : props.disabled ? 'เลือกจุดก่อนวิเคราะห์' : 'วิเคราะห์พื้นที่บริการ'}</span>
+        <span>{props.loading ? 'กำลังคำนวณ...' : props.disabled ? 'เลือกจุดบนแผนที่ก่อน' : 'แสดงพื้นที่ที่เข้าถึงได้'}</span>
       </button>
     </>
   );

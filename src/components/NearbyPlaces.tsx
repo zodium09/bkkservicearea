@@ -36,14 +36,14 @@ export function NearbyPlaces({ places, loading, onSelect }: NearbyPlacesProps) {
     <section className="nearby-places">
       <div className="nearby-places-head">
         <div>
-          <span>Places in service area</span>
-          <h2><Building2 size={17} /> สถานที่ภายในพื้นที่เข้าถึง</h2>
+          <span>สถานที่ที่เดินทางไปถึงได้</span>
+          <h2><Building2 size={17} /> สถานที่สำคัญในพื้นที่</h2>
         </div>
         <strong>{places.length.toLocaleString()} แห่ง</strong>
       </div>
 
       <p className="nearby-method-note">
-        คัดเฉพาะจุดที่อยู่ในขอบเขต Network Service Area · ระยะที่แสดงวัดเส้นตรงจากจุดเริ่มต้น
+        แสดงเฉพาะสถานที่ภายในพื้นที่ที่คำนวณได้ · เรียงจากใกล้ไปไกล
       </p>
 
       {loading ? (

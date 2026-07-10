@@ -134,9 +134,9 @@ export function ExecutiveDashboard({
     <div className="executive-dashboard">
       <section className="executive-hero">
         <div className="executive-hero-copy">
-          <span className="executive-kicker"><Sparkles size={13} /> Executive overview</span>
+          <span className="executive-kicker"><Sparkles size={13} /> ภาพรวมสำหรับผู้บริหาร</span>
           <h2>เมืองที่เข้าถึงบริการได้ ใกล้แค่ไหน?</h2>
-          <p>สรุปความครอบคลุมจากโครงข่ายถนนจริง เปรียบเทียบช่องว่างบริการรายเขตเพื่อกำหนดพื้นที่ลงทุน</p>
+          <p>สรุปความครอบคลุมตามเส้นทางบนถนนจริง เปรียบเทียบช่องว่างบริการรายเขตเพื่อกำหนดพื้นที่ลงทุน</p>
         </div>
         <div className={`executive-score-ring is-${scoreTone(overallIndex)}`} style={{ '--score': overallIndex } as React.CSSProperties}>
           <div>
@@ -187,14 +187,14 @@ export function ExecutiveDashboard({
           <div className="executive-kpi-icon"><Clock3 size={17} /></div>
           <span>กรอบเวลา</span>
           <strong>15<i> นาที</i></strong>
-          <small>ตามต้นทุนโครงข่าย</small>
+          <small>ตามเวลาการเดินทาง</small>
         </article>
       </section>
 
       <section className="executive-section">
         <div className="executive-section-head">
           <div>
-            <span>Service gap</span>
+            <span>ช่องว่างการเข้าถึงบริการ</span>
             <h3>บริการที่ยังเข้าถึงได้น้อย</h3>
           </div>
           <BarChart3 size={18} />
@@ -219,7 +219,7 @@ export function ExecutiveDashboard({
       <section className="executive-section">
         <div className="executive-section-head is-stacked">
           <div>
-            <span>Spatial priority</span>
+            <span>พื้นที่ที่ควรให้ความสำคัญ</span>
             <h3>แผนที่ช่องว่างบริการ</h3>
           </div>
           <label className="executive-field">
@@ -242,7 +242,7 @@ export function ExecutiveDashboard({
       <section className="executive-section">
         <div className="executive-section-head">
           <div>
-            <span>Priority districts</span>
+            <span>เขตที่ควรเร่งดำเนินการ</span>
             <h3>5 เขตเร่งด่วนเชิงนโยบาย</h3>
           </div>
           <AlertTriangle size={18} />
@@ -270,7 +270,7 @@ export function ExecutiveDashboard({
         <section className="executive-section district-drilldown">
           <div className="district-drilldown-head">
             <div>
-              <span>District brief · ลำดับเร่งด่วน {selectedRank}/50</span>
+              <span>สรุปรายเขต · ลำดับเร่งด่วน {selectedRank}/50</span>
               <h3>เขต{selectedRow.district.name}</h3>
             </div>
             <button type="button" onClick={() => onZoomDistrict(selectedRow.code)}><Crosshair size={15} /> ซูม</button>
@@ -300,14 +300,14 @@ export function ExecutiveDashboard({
           </div>
           <div className="district-recommendation">
             <ShieldCheck size={17} />
-            <p><strong>ข้อเสนอเชิงบริหาร</strong> จัดลำดับการลงทุนใน {selectedCategoryRanking.slice(0, 2).map((item) => item.shortName).join(' และ ')} พร้อมตรวจคอขวดของโครงข่ายและจุดเชื่อมต่อก่อนเพิ่มบริการใหม่</p>
+            <p><strong>ข้อเสนอเชิงบริหาร</strong> จัดลำดับการลงทุนใน {selectedCategoryRanking.slice(0, 2).map((item) => item.shortName).join(' และ ')} พร้อมตรวจข้อจำกัดของเส้นทางและการเชื่อมต่อก่อนเพิ่มบริการใหม่</p>
           </div>
         </section>
       )}
 
       <footer className="executive-method-note">
         <span><span className="live-dot" /> ข้อมูลคำนวณล่าสุด {generatedDate}</span>
-        <span>ดัชนี = ค่าเฉลี่ยพื้นที่ครอบคลุม {categories.length} บริการ · ใช้ Network Service Area ไม่ใช่รัศมีวงกลม</span>
+        <span>ดัชนีคำนวณจากค่าเฉลี่ยพื้นที่ครอบคลุม {categories.length} บริการ ตามเส้นทางบนถนนจริง</span>
       </footer>
     </div>
   );

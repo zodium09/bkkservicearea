@@ -16,7 +16,6 @@ import {
   Sun,
   MapPin,
   Download,
-  Database,
   Layers,
   X,
 } from 'lucide-react';
@@ -25,10 +24,9 @@ import './executive.css';
 import {
   AccessibilityConfig,
 } from './types';
-import { getEngineStatus, analyzeServiceArea } from './services/api';
+import { analyzeServiceArea } from './services/api';
 import { AnalyzePanel } from './components/AnalyzePanel';
 import { LayerControl } from './components/LayerControl';
-import { ResultSummary } from './components/ResultSummary';
 import { ExecutiveDashboard } from './components/ExecutiveDashboard';
 import { NearbyPlaces } from './components/NearbyPlaces';
 import type { CostType, TravelMode } from './types/gis';
@@ -252,9 +250,6 @@ function App() {
   // Tab State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analyze'>('dashboard');
 
-  // Engine status
-  const [engineStatus, setEngineStatus] = useState<any>(null);
-
   // 15-Minute City Dashboard State
   const [dashboardLayers, setDashboardLayers] = useState<Record<string, boolean>>({
     bkk_hospitals: true,
@@ -296,8 +291,9 @@ function App() {
   const [analysisLayers, setAnalysisLayers] = useState<Record<string, boolean>>({
     serviceArea: true,
     reachableRoads: true,
+    nearbyPlaces: true,
     startPoint: true,
-    snappedNode: true,
+    snappedNode: false,
     barriers: false,
     onewayRoads: false,
   });
@@ -317,6 +313,7 @@ function App() {
     dynamicSnappedNode: L.GeoJSON | null;
     dynamicServiceArea: L.GeoJSON | null;
     dynamicReachableRoads: L.GeoJSON | null;
+    dynamicNearbyPlaces: L.LayerGroup | null;
   }>({
     basemap: null,
     districts: null,
@@ -327,6 +324,7 @@ function App() {
     dynamicSnappedNode: null,
     dynamicServiceArea: null,
     dynamicReachableRoads: null,
+    dynamicNearbyPlaces: null,
   });
 
   // Fetch initial data directly from static assets
@@ -354,11 +352,6 @@ function App() {
       })
       .catch((e) => console.error('Failed to load accessibility statistics:', e));
 
-
-    // Fetch engine health status
-    getEngineStatus()
-      .then(setEngineStatus)
-      .catch((e) => console.error('Failed to load engine status:', e));
   }, []);
 
   const activeTabRef = useRef(activeTab);
@@ -677,6 +670,8 @@ function App() {
         layersRef.current.dynamicReachableRoads = null;
         layersRef.current.dynamicSnappedNode?.remove();
         layersRef.current.dynamicSnappedNode = null;
+        layersRef.current.dynamicNearbyPlaces?.remove();
+        layersRef.current.dynamicNearbyPlaces = null;
       }
     }
   }, [activeTab]);
@@ -802,11 +797,11 @@ function App() {
       });
       setAnalyzeResults(data);
       const label = analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance} ม.`;
-      setMessage(`วิเคราะห์ ${label} สำเร็จ (Mode: ${analysisMode}, Engine: ${data.engine}${data.cacheHit ? ', cache' : ''})`);
+      setMessage(`แสดงพื้นที่ที่เข้าถึงได้ภายใน ${label} พร้อมสถานที่สำคัญในบริเวณแล้ว`);
     } catch (e: any) {
       console.error('Analysis failed:', e);
-      setAnalyzeError(e.message || 'การวิเคราะห์ล้มเหลว');
-      setMessage('การวิเคราะห์เครือข่ายถนนล้มเหลว');
+      setAnalyzeError('ยังไม่สามารถคำนวณจากจุดนี้ได้ กรุณาเลือกจุดอื่นหรือลองอีกครั้ง');
+      setMessage('ยังไม่สามารถคำนวณพื้นที่เข้าถึงได้ กรุณาลองอีกครั้ง');
     } finally {
       setIsAnalyzing(false);
     }
@@ -822,14 +817,6 @@ function App() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-  };
-
-  const getAnalysisEngineLabel = (result: any) => {
-    if (result?.cacheHit) return 'Cache';
-    if (result?.engine === 'postgis-pgrouting') return 'pgRouting';
-    if (result?.engine === 'js-dijkstra-fallback') return 'Road Network JS';
-    if (result?.analysisQuality === 'approximate') return 'Approximate';
-    return 'Network';
   };
 
   const visibleDashboardLayerCount = useMemo(
@@ -998,6 +985,33 @@ function App() {
       .openOn(map);
   };
 
+  useEffect(() => {
+    const map = mapRef.current;
+    layersRef.current.dynamicNearbyPlaces?.remove();
+    layersRef.current.dynamicNearbyPlaces = null;
+    if (!map || activeTab !== 'analyze' || !analysisLayers.nearbyPlaces || !nearbyPlaces.length) return;
+
+    const markers = nearbyPlaces.map((place) => {
+      const marker = L.marker([place.lat, place.lng], {
+        pane: 'servicePoints',
+        icon: L.divIcon({
+          className: 'nearby-map-marker-wrap',
+          html: `<div class="nearby-map-marker" style="--marker-color:${place.color}"><span>${place.emoji}</span></div>`,
+          iconSize: [26, 30],
+          iconAnchor: [13, 28],
+          tooltipAnchor: [0, -24],
+        }),
+      });
+      marker.bindTooltip(
+        `<strong>${escapeHtml(place.name)}</strong><br><span>${escapeHtml(place.categoryName)} · เขต${escapeHtml(place.district || 'ไม่ระบุ')}</span>`,
+        { direction: 'top', className: 'nearby-map-tooltip' },
+      );
+      marker.on('click', () => handleSelectNearbyPlace(place));
+      return marker;
+    });
+    layersRef.current.dynamicNearbyPlaces = L.layerGroup(markers).addTo(map);
+  }, [activeTab, analysisLayers.nearbyPlaces, nearbyPlaces]);
+
   return (
     <main className={`app-shell ${basemapMode === 'dark' ? 'is-dark-map' : 'is-light-map'}`}>
       {/* MAP STAGE */}
@@ -1098,7 +1112,7 @@ function App() {
               <div className="webmap-layer-panel">
                 <div className="webmap-panel-header">
                   <div>
-                    <span>Map Layers</span>
+                    <span>การแสดงผล</span>
                     <h2>{activeTab === 'dashboard' ? 'ชั้นข้อมูลบริการ' : 'ชั้นข้อมูลผลวิเคราะห์'}</h2>
                   </div>
                   <button type="button" onClick={() => setIsLayerPanelOpen(false)} title="ปิดแผงชั้นข้อมูล">
@@ -1182,12 +1196,12 @@ function App() {
         </div>
 
         <div className="map-mode-badge">
-          {activeTab === 'dashboard' ? 'ภาพรวมการเข้าถึง · Network Service Area' : 'วิเคราะห์เข้าถึงรายจุด · Shortest-path network'}
+          {activeTab === 'dashboard' ? 'ภาพรวมการเข้าถึงบริการทั่วกรุงเทพฯ' : 'พื้นที่เข้าถึงจากจุดที่เลือก'}
         </div>
 
         {activeTab === 'dashboard' && (
           <div className="coverage-map-legend" aria-label="คำอธิบายสีความครอบคลุม">
-            <div><span>Coverage score</span><strong>{ACCESSIBILITY_PALETTE[dashboardFocusCategory]?.name}</strong></div>
+            <div><span>ระดับการเข้าถึง</span><strong>{ACCESSIBILITY_PALETTE[dashboardFocusCategory]?.name}</strong></div>
             <ul>
               <li><i style={{ background: '#ef4444' }} />0–20</li>
               <li><i style={{ background: '#fb923c' }} />20–40</li>
@@ -1207,7 +1221,7 @@ function App() {
             <Radar size={25} />
           </div>
           <div>
-            <p className="eyebrow">Bangkok Service Intelligence</p>
+            <p className="eyebrow">ระบบวางแผนการเข้าถึงบริการ</p>
             <h1>เมืองเข้าถึงได้ กรุงเทพฯ</h1>
           </div>
           <span className="brand-version">v2.0</span>
@@ -1249,22 +1263,13 @@ function App() {
           <>
             <section className="workflow-card">
               <div className="section-header">
-                <h2>🛰️ สถานะระบบประมวลผล (Engine)</h2>
-              </div>
-              {engineStatus?.database ? (
-                <div style={{ padding: '10px 12px', background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '8px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, marginTop: '8px' }}>
-                  <Database size={16} />
-                  <span>Engine: PostGIS + pgRouting พร้อมใช้งาน</span>
+                <div>
+                  <span className="section-step">1</span>
+                  <div>
+                    <h2>กำหนดการเดินทาง</h2>
+                    <p>เลือกวิธีเดินทางและระยะเวลาที่ต้องการ</p>
+                  </div>
                 </div>
-              ) : (
-                <div style={{ padding: '10px 12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '8px', color: '#d97706', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', fontWeight: 600, marginTop: '8px' }}>
-                  <Database size={16} />
-                  <span>PostGIS ออฟไลน์ - ใช้โครงข่ายถนนจาก ArcGIS + JS Dijkstra</span>
-                </div>
-              )}
-
-              <div className="section-header" style={{ marginTop: '18px' }}>
-                <h2>ตั้งค่า Network Analysis</h2>
               </div>
               <div style={{ marginTop: '8px' }}>
                 <AnalyzePanel
@@ -1296,48 +1301,38 @@ function App() {
               <section className="result-card">
                 <div className="result-head" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px', marginBottom: '12px' }}>
                   <div>
-                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ผลลัพธ์การวิเคราะห์พื้นที่เข้าถึง</span>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>สรุปพื้นที่ที่เดินทางไปถึงได้</span>
                     <h2 style={{ fontSize: '1rem', fontWeight: 700, marginTop: '2px' }}>
-                      📍 ขอบเขต {analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance} เมตร`}
+                      📍 ภายใน {analysisCostType === 'time' ? `${Math.round(analysisLimit / 60)} นาที` : `${analyzeDistance} เมตร`}
                     </h2>
                   </div>
-                  <strong style={{ background: '#7c3aed22', color: '#a78bfa', padding: '4px 8px', borderRadius: '6px', fontSize: '0.75rem' }}>
-                    {getAnalysisEngineLabel(analyzeResults)}
-                  </strong>
                 </div>
 
-                <ResultSummary result={analyzeResults} />
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
-                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>ขนาดพื้นที่บริการ</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#a78bfa' }}>{analyzeResults.metrics.serviceAreaSqKm} ตร.กม.</strong>
+                <div className="analysis-overview-grid">
+                  <div className="analysis-overview-item is-area">
+                    <span>ขนาดพื้นที่</span>
+                    <strong>{analyzeResults.metrics.serviceAreaSqKm} <i>ตร.กม.</i></strong>
                   </div>
-                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.02)' }}>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>ความยาวถนนที่เข้าถึง</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#3b82f6' }}>{analyzeResults.metrics.reachedRoadLengthKm} กม.</strong>
+                  <div className="analysis-overview-item is-road">
+                    <span>ระยะถนนที่ครอบคลุม</span>
+                    <strong>{analyzeResults.metrics.reachedRoadLengthKm} <i>กม.</i></strong>
                   </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
-                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>จำนวนทางร่วมแยก</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#10b981' }}>{analyzeResults.metrics.networkNodesReached} จุด</strong>
+                  <div className="analysis-overview-item is-place">
+                    <span>สถานที่ในพื้นที่</span>
+                    <strong>{nearbyPlaces.length.toLocaleString()} <i>แห่ง</i></strong>
                   </div>
-                  <div style={{ background: basemapMode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)', padding: '10px', borderRadius: '6px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>ระยะ Snap ถนน</span>
-                    <strong style={{ fontSize: '1.05rem', color: '#f59e0b' }}>{analyzeResults.metrics.averageSnapDistanceMeters} ม.</strong>
+                  <div className="analysis-overview-item is-district">
+                    <span>เขตที่ครอบคลุม</span>
+                    <strong>{analyzeResults.intersectingDistricts.length} <i>เขต</i></strong>
                   </div>
                 </div>
 
-                <div className="section-header">
-                  <h2>🗺️ เขตที่พื้นที่พาดผ่าน ({analyzeResults.intersectingDistricts.length})</h2>
+                <div className="result-subsection-head">
+                  <h2>เขตที่ครอบคลุม</h2>
                 </div>
-                <div style={{ maxHeight: '120px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '6px', paddingRight: '4px' }}>
+                <div className="covered-district-list">
                   {analyzeResults.intersectingDistricts.map((d: any, index: number) => (
-                    <div key={`${d.id ?? 'district'}-${d.name}-${index}`} style={{ fontSize: '0.78rem', padding: '6px 10px', background: basemapMode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: '4px', border: basemapMode === 'dark' ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.03)' }}>
-                      เขต{d.name}
-                    </div>
+                    <span key={`${d.id ?? 'district'}-${d.name}-${index}`}>เขต{d.name}</span>
                   ))}
                   {analyzeResults.intersectingDistricts.length === 0 && (
                     <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ไม่พาดผ่านเขตใด</span>
@@ -1352,26 +1347,10 @@ function App() {
 
                 <button
                   onClick={handleExportGeoJSON}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: '8px',
-                    border: basemapMode === 'dark' ? '1px solid #7c3aed' : '1px solid #c084fc',
-                    backgroundColor: 'transparent',
-                    color: basemapMode === 'dark' ? '#c084fc' : '#7c3aed',
-                    fontWeight: 600,
-                    fontSize: '0.8rem',
-                    cursor: 'pointer',
-                    marginTop: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s ease'
-                  }}
+                  className="export-area-button"
                 >
                   <Download size={14} />
-                  <span>📥 Export GeoJSON (ขอบเขตบริการ)</span>
+                  <span>ดาวน์โหลดขอบเขตพื้นที่</span>
                 </button>
               </section>
             )}

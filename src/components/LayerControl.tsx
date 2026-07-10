@@ -7,7 +7,7 @@ const ANALYSIS_LAYERS = [
   ['startPoint', 'จุดเริ่มต้น'],
   ['serviceArea', 'พื้นที่เข้าถึง'],
   ['reachableRoads', 'ถนนที่เข้าถึงได้'],
-  ['snappedNode', 'จุดที่ระบบจับเข้าถนน'],
+  ['nearbyPlaces', 'สถานที่ในพื้นที่'],
 ] as const;
 
 export function LayerControl({ layers, onChange }: LayerControlProps) {

@@ -1047,3 +1047,218 @@
 .is-light-map .nearby-place-name strong {
   color: #0f172a;
 }
+
+/* Clear visual hierarchy for point-analysis results. */
+.section-header > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.section-header > div > div {
+  min-width: 0;
+}
+
+.section-header .section-step {
+  flex: 0 0 auto;
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  color: #052e2b;
+  background: #5eead4;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.section-header p {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.analysis-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 17px;
+}
+
+.analysis-overview-item {
+  --overview-color: #a78bfa;
+  position: relative;
+  min-width: 0;
+  min-height: 72px;
+  overflow: hidden;
+  padding: 10px 11px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  border-radius: 9px;
+  background: rgba(15, 23, 42, 0.2);
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.analysis-overview-item::after {
+  content: "";
+  position: absolute;
+  right: -20px;
+  bottom: -29px;
+  width: 65px;
+  height: 65px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--overview-color) 12%, transparent);
+}
+
+.analysis-overview-item.is-road { --overview-color: #38bdf8; }
+.analysis-overview-item.is-place { --overview-color: #2dd4bf; }
+.analysis-overview-item.is-district { --overview-color: #fb923c; }
+
+.analysis-overview-item span {
+  color: #64748b;
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.analysis-overview-item strong {
+  color: var(--overview-color);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.analysis-overview-item strong i {
+  color: #94a3b8;
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.result-subsection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 2px 0 7px;
+}
+
+.result-subsection-head h2 {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.covered-district-list {
+  max-height: 88px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding-right: 3px;
+}
+
+.covered-district-list > span {
+  padding: 5px 8px;
+  border: 1px solid rgba(56, 189, 248, 0.12);
+  border-radius: 999px;
+  color: #bae6fd;
+  background: rgba(14, 165, 233, 0.07);
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.export-area-button {
+  width: 100%;
+  min-height: 39px;
+  margin-top: 14px;
+  border: 1px solid rgba(167, 139, 250, 0.28);
+  border-radius: 8px;
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 150ms ease;
+}
+
+.export-area-button:hover {
+  border-color: rgba(167, 139, 250, 0.5);
+  color: #ede9fe;
+  background: rgba(124, 58, 237, 0.13);
+}
+
+/* Category symbols rendered for every reachable place on the map. */
+.nearby-map-marker-wrap {
+  border: 0 !important;
+  background: transparent !important;
+  overflow: visible !important;
+}
+
+.nearby-map-marker {
+  --marker-color: #0ea5e9;
+  position: relative;
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 255, 255, 0.96);
+  border-radius: 50% 50% 50% 4px;
+  background: var(--marker-color);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.36), 0 0 0 2px color-mix(in srgb, var(--marker-color) 20%, transparent);
+  display: grid;
+  place-items: center;
+  transform: rotate(-45deg);
+  transform-origin: 50% 80%;
+  transition: transform 130ms ease, filter 130ms ease;
+}
+
+.nearby-map-marker span {
+  font-size: 11px;
+  line-height: 1;
+  transform: rotate(45deg);
+}
+
+.nearby-map-marker-wrap:hover .nearby-map-marker {
+  z-index: 2;
+  filter: saturate(1.15) brightness(1.08);
+  transform: rotate(-45deg) scale(1.22);
+}
+
+.nearby-map-tooltip {
+  padding: 7px 9px !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  border-radius: 7px !important;
+  color: #e2e8f0 !important;
+  background: rgba(15, 23, 42, 0.94) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.25) !important;
+  font-family: inherit !important;
+  font-size: 0.7rem !important;
+}
+
+.nearby-map-tooltip span {
+  color: #94a3b8;
+  font-size: 0.62rem;
+}
+
+.is-light-map .analysis-overview-item {
+  border-color: rgba(15, 23, 42, 0.07);
+  background: rgba(248, 250, 252, 0.9);
+}
+
+.is-light-map .covered-district-list > span {
+  border-color: rgba(2, 132, 199, 0.14);
+  color: #0369a1;
+  background: rgba(14, 165, 233, 0.06);
+}
+
+.is-light-map .export-area-button {
+  border-color: rgba(124, 58, 237, 0.2);
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.04);
+}
+
+@media (max-width: 560px) {
+  .analysis-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nearby-map-marker { width: 22px; height: 22px; }
+}
