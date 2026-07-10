@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import L from 'leaflet';
+import { booleanPointInPolygon } from '@turf/turf';
 import 'leaflet/dist/leaflet.css';
 import {
   Bike,
+  BarChart3,
   Footprints,
   Car,
   Loader2,
@@ -19,6 +21,7 @@ import {
   X,
 } from 'lucide-react';
 import './styles.css';
+import './executive.css';
 import {
   AccessibilityConfig,
 } from './types';
@@ -26,7 +29,11 @@ import { getEngineStatus, analyzeServiceArea } from './services/api';
 import { AnalyzePanel } from './components/AnalyzePanel';
 import { LayerControl } from './components/LayerControl';
 import { ResultSummary } from './components/ResultSummary';
+import { ExecutiveDashboard } from './components/ExecutiveDashboard';
+import { NearbyPlaces } from './components/NearbyPlaces';
 import type { CostType, TravelMode } from './types/gis';
+import type { AccessibilityStats, DashboardTravelMode } from './types/dashboard';
+import type { NearbyPlace } from './types/nearby';
 
 const BANGKOK_CENTER: L.LatLngExpression = [13.7563, 100.5018];
 const BANGKOK_SEARCH_VIEWBOX = '100.327,13.955,100.938,13.494';
@@ -179,6 +186,48 @@ function escapeHtml(value: any): string {
     .replaceAll("'", '&#39;');
 }
 
+function isFeatureCollection(value: any): boolean {
+  return value?.type === 'FeatureCollection' && Array.isArray(value.features);
+}
+
+function districtStatsCode(feature: any): string {
+  return String(feature?.properties?.OBJECTID ?? feature?.properties?.ADMIN_ID ?? feature?.id ?? '');
+}
+
+function coverageColor(value: number): string {
+  if (value >= 80) return '#14b8a6';
+  if (value >= 60) return '#38bdf8';
+  if (value >= 40) return '#facc15';
+  if (value >= 20) return '#fb923c';
+  return '#ef4444';
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  const deltaLat = radians(lat2 - lat1);
+  const deltaLng = radians(lng2 - lng1);
+  const a = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(radians(lat1)) * Math.cos(radians(lat2)) * Math.sin(deltaLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function geometryBounds(geometry: any): [number, number, number, number] | null {
+  const bounds: [number, number, number, number] = [Infinity, Infinity, -Infinity, -Infinity];
+  const visit = (coordinates: any): void => {
+    if (!Array.isArray(coordinates)) return;
+    if (coordinates.length >= 2 && typeof coordinates[0] === 'number' && typeof coordinates[1] === 'number') {
+      bounds[0] = Math.min(bounds[0], coordinates[0]);
+      bounds[1] = Math.min(bounds[1], coordinates[1]);
+      bounds[2] = Math.max(bounds[2], coordinates[0]);
+      bounds[3] = Math.max(bounds[3], coordinates[1]);
+      return;
+    }
+    coordinates.forEach(visit);
+  };
+  visit(geometry?.coordinates);
+  return Number.isFinite(bounds[0]) ? bounds : null;
+}
+
 interface PlaceSearchResult {
   place_id: number | string;
   display_name: string;
@@ -201,7 +250,7 @@ function App() {
   });
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analyze'>('analyze');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analyze'>('dashboard');
 
   // Engine status
   const [engineStatus, setEngineStatus] = useState<any>(null);
@@ -222,7 +271,10 @@ function App() {
     police_stations: false,
     communities: false,
   });
-  const [dashboardTravelMode, setDashboardTravelMode] = useState<'walk' | 'cycle' | 'drive'>('walk');
+  const [dashboardTravelMode, setDashboardTravelMode] = useState<DashboardTravelMode>('walk');
+  const [dashboardStats, setDashboardStats] = useState<AccessibilityStats | null>(null);
+  const [dashboardFocusCategory, setDashboardFocusCategory] = useState<string>('health_centers');
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<string | null>(null);
   const [districtsGeojson, setDistrictsGeojson] = useState<any>(null);
   const [loadedAccessibilityData, setLoadedAccessibilityData] = useState<Record<string, any>>({});
   const [loadingLayers, setLoadingLayers] = useState<Record<string, boolean>>({});
@@ -281,9 +333,26 @@ function App() {
   useEffect(() => {
     // Fetch districts boundary
     fetch('/data/processed/bma-layers/layer-13.geojson')
-      .then((r) => r.json())
-      .then(setDistrictsGeojson)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        if (!isFeatureCollection(data)) throw new Error('District layer is not a valid FeatureCollection');
+        setDistrictsGeojson(data);
+      })
       .catch((e) => console.error('Failed to load districts boundary:', e));
+
+    fetch('/data/processed/accessibility/stats.json')
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        if (!data?.overall || !data?.districts) throw new Error('Accessibility statistics are invalid');
+        setDashboardStats(data as AccessibilityStats);
+      })
+      .catch((e) => console.error('Failed to load accessibility statistics:', e));
 
 
     // Fetch engine health status
@@ -307,6 +376,7 @@ function App() {
       const response = await fetch(`/data/processed/accessibility/${category}-${type}.geojson?t=${Date.now()}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
+      if (!isFeatureCollection(data)) throw new Error('Invalid GeoJSON FeatureCollection');
       setLoadedAccessibilityData((prev) => ({
         ...prev,
         [key]: data,
@@ -329,6 +399,15 @@ function App() {
       }
     });
   }, [dashboardLayers, dashboardTravelMode]);
+
+  // Once an analysis is available, lazily load every service-point layer so nearby
+  // places can be tested against the resulting network polygon.
+  useEffect(() => {
+    if (activeTab !== 'analyze' || !analyzeResults) return;
+    Object.keys(ACCESSIBILITY_PALETTE).forEach((category) => {
+      loadAccessibilityLayer(category, 'pois');
+    });
+  }, [activeTab, analyzeResults]);
 
   // Initialize Leaflet Map
   useEffect(() => {
@@ -406,19 +485,29 @@ function App() {
     });
 
     // --- 2. Redraw layers ---
-    if (districtsGeojson && districtsGeojson.type === 'FeatureCollection') {
+    if (isFeatureCollection(districtsGeojson)) {
       layersRef.current.districts = L.geoJSON(districtsGeojson, {
         pane: 'districts',
-        style: {
-          color: basemapMode === 'dark' ? '#334155' : '#94a3b8',
-          weight: 1,
-          opacity: 0.6,
-          fillColor: 'transparent',
-          fillOpacity: 0,
+        style: (feature) => {
+          const code = districtStatsCode(feature);
+          const coverage = dashboardStats?.districts[code]?.coverage[`${dashboardFocusCategory}_${dashboardTravelMode}`] ?? 0;
+          const selected = activeTab === 'dashboard' && code === selectedDistrictCode;
+          return {
+            color: selected ? '#f8fafc' : basemapMode === 'dark' ? '#475569' : '#cbd5e1',
+            weight: selected ? 3 : 1,
+            opacity: activeTab === 'dashboard' ? 0.95 : 0.6,
+            fillColor: activeTab === 'dashboard' ? coverageColor(coverage) : 'transparent',
+            fillOpacity: activeTab === 'dashboard' ? (selected ? 0.78 : 0.5) : 0,
+          };
         },
         onEachFeature: (feature, layer: L.Layer) => {
           const name = feature.properties?.DNAME || feature.properties?.DISTRICT_N || feature.properties?.NAME || 'เขต';
-          layer.bindTooltip(`<strong>เขต${name}</strong>`, {
+          const code = districtStatsCode(feature);
+          const coverage = dashboardStats?.districts[code]?.coverage[`${dashboardFocusCategory}_${dashboardTravelMode}`];
+          const tooltipMetric = activeTab === 'dashboard' && Number.isFinite(coverage)
+            ? `<br><span>ความครอบคลุม <strong>${Number(coverage).toFixed(1)}%</strong></span>`
+            : '';
+          layer.bindTooltip(`<strong>เขต${escapeHtml(name)}</strong>${tooltipMetric}`, {
             sticky: true,
             className: 'district-tooltip',
           });
@@ -434,6 +523,15 @@ function App() {
             },
             mouseout: (e: L.LeafletMouseEvent) => {
               layersRef.current.districts?.resetStyle(e.target);
+            },
+            click: (e: L.LeafletMouseEvent) => {
+              if (activeTabRef.current !== 'dashboard') return;
+              L.DomEvent.stopPropagation(e);
+              setSelectedDistrictCode(code);
+              map.fitBounds((e.target as L.Path & { getBounds: () => L.LatLngBounds }).getBounds(), {
+                padding: [44, 44],
+                maxZoom: 13,
+              });
             },
           });
         },
@@ -452,7 +550,7 @@ function App() {
 
         // Render Service Area Polygons
         const areaData = loadedAccessibilityData[areaKey];
-        if (areaData) {
+        if (isFeatureCollection(areaData)) {
           layersRef.current.accessibility[areaKey] = L.geoJSON(areaData, {
             pane: 'analysisArea',
             style: {
@@ -467,7 +565,7 @@ function App() {
 
         // Render POI point markers
         const poisData = loadedAccessibilityData[poisKey];
-        if (poisData && showPoiMarkers) {
+        if (isFeatureCollection(poisData) && showPoiMarkers) {
           layersRef.current.pois[poisKey] = L.geoJSON(poisData, {
             pane: 'servicePoints',
             pointToLayer: (feature, latlng) => {
@@ -553,6 +651,9 @@ function App() {
     loadedAccessibilityData,
     dashboardLayers,
     dashboardTravelMode,
+    dashboardStats,
+    dashboardFocusCategory,
+    selectedDistrictCode,
     basemapMode,
     activeTab,
     useCircleMarkers,
@@ -590,6 +691,7 @@ function App() {
 
     if (inspectCoords && analysisLayers.startPoint) {
       layersRef.current.dynamicMarker = L.marker(inspectCoords, {
+        draggable: true,
         icon: L.divIcon({
           html: `
             <div class="poi-marker-container inspect-marker">
@@ -603,6 +705,14 @@ function App() {
           iconAnchor: [14, 14],
         })
       }).addTo(map);
+      layersRef.current.dynamicMarker.on('dragend', (event: L.DragEndEvent) => {
+        const position = (event.target as L.Marker).getLatLng();
+        setInspectCoords(position);
+        setSelectedPlaceName('ตำแหน่งที่ปรับจากการลากหมุด');
+        setAnalyzeResults(null);
+        setAnalyzeError(null);
+        setMessage('ปรับจุดวิเคราะห์แล้ว กดวิเคราะห์อีกครั้งเพื่อคำนวณพื้นที่บริการใหม่');
+      });
       map.panTo(inspectCoords);
     }
   }, [inspectCoords, analysisLayers.startPoint]);
@@ -727,6 +837,48 @@ function App() {
     [dashboardLayers],
   );
 
+  const nearbyPlaces = useMemo<NearbyPlace[]>(() => {
+    if (!inspectCoords || !isFeatureCollection(analyzeResults?.serviceArea)) return [];
+    const serviceAreas = analyzeResults.serviceArea.features
+      .filter((feature: any) => feature?.geometry && ['Polygon', 'MultiPolygon'].includes(feature.geometry.type))
+      .map((feature: any) => ({ feature, bounds: geometryBounds(feature.geometry) }))
+      .filter((item: any) => item.bounds);
+    if (!serviceAreas.length) return [];
+
+    const places: NearbyPlace[] = [];
+    Object.entries(ACCESSIBILITY_PALETTE).forEach(([category, config]) => {
+      const collection = loadedAccessibilityData[`${category}-pois`];
+      if (!isFeatureCollection(collection)) return;
+      collection.features.forEach((feature: any, index: number) => {
+        if (feature?.geometry?.type !== 'Point' || !Array.isArray(feature.geometry.coordinates)) return;
+        const [lng, lat] = feature.geometry.coordinates.map(Number);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        const inside = serviceAreas.some(({ feature: polygon, bounds }: any) => (
+          lng >= bounds[0] && lng <= bounds[2] && lat >= bounds[1] && lat <= bounds[3]
+          && booleanPointInPolygon(feature, polygon)
+        ));
+        if (!inside) return;
+        places.push({
+          id: `${category}-${feature.id ?? feature.properties?.id ?? index}`,
+          name: feature.properties?.name || config.name,
+          district: feature.properties?.district || '',
+          category,
+          categoryName: config.name,
+          color: config.primary,
+          emoji: config.emoji,
+          lat,
+          lng,
+          distanceKm: haversineKm(inspectCoords.lat, inspectCoords.lng, lat, lng),
+        });
+      });
+    });
+    return places.sort((left, right) => left.distanceKm - right.distanceKm);
+  }, [analyzeResults, inspectCoords, loadedAccessibilityData]);
+
+  const isLoadingNearbyPlaces = Boolean(analyzeResults) && Object.keys(ACCESSIBILITY_PALETTE).some((category) => (
+    loadingLayers[`${category}-pois`] || !loadedAccessibilityData[`${category}-pois`]
+  ));
+
   const isBangkokCoordinate = (lat: number, lng: number) => (
     lat >= BANGKOK_BOUNDS.minLat &&
     lat <= BANGKOK_BOUNDS.maxLat &&
@@ -824,11 +976,33 @@ function App() {
     setMessage('เลือกสถานที่หรือคลิกบนแผนที่เพื่อเริ่มวิเคราะห์การเข้าถึง');
   };
 
+  const handleZoomDistrict = (code: string) => {
+    if (!isFeatureCollection(districtsGeojson) || !mapRef.current) return;
+    const feature = districtsGeojson.features.find((item: any) => districtStatsCode(item) === code);
+    if (!feature) return;
+    const bounds = L.geoJSON(feature).getBounds();
+    if (bounds.isValid()) {
+      setSelectedDistrictCode(code);
+      mapRef.current.fitBounds(bounds, { padding: [44, 44], maxZoom: 13 });
+    }
+  };
+
+  const handleSelectNearbyPlace = (place: NearbyPlace) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const location = L.latLng(place.lat, place.lng);
+    map.setView(location, Math.max(map.getZoom(), 16));
+    L.popup({ className: 'nearby-place-popup', closeButton: true })
+      .setLatLng(location)
+      .setContent(`<strong>${escapeHtml(place.name)}</strong><br><span>${escapeHtml(place.categoryName)} · เขต${escapeHtml(place.district || 'ไม่ระบุ')}</span>`)
+      .openOn(map);
+  };
+
   return (
     <main className={`app-shell ${basemapMode === 'dark' ? 'is-dark-map' : 'is-light-map'}`}>
       {/* MAP STAGE */}
       <section className="map-stage">
-        <div id="map" className={`zoom-${currentZoom}`} aria-label="Bangkok Service Area Map" />
+        <div id="map" className={`zoom-${currentZoom}`} aria-label="แผนที่วิเคราะห์พื้นที่บริการครบ 50 เขต กรุงเทพมหานคร" />
 
         {/* Map float toolbar */}
         <div className="map-toolbar" aria-label="Map tools">
@@ -895,7 +1069,7 @@ function App() {
                       : 'ค้นหาสถานที่หรือคลิกบนแผนที่'}
                   </strong>
                   {inspectCoords && (
-                    <small>{inspectCoords.lat.toFixed(6)}, {inspectCoords.lng.toFixed(6)}</small>
+                    <small>{inspectCoords.lat.toFixed(6)}, {inspectCoords.lng.toFixed(6)} · ลากหมุดเพื่อปรับจุดได้</small>
                   )}
                 </div>
                 {inspectCoords && (
@@ -1008,8 +1182,21 @@ function App() {
         </div>
 
         <div className="map-mode-badge">
-          {activeTab === 'dashboard' ? '🗺️ ชั้นข้อมูลบริการ' : '📍 โหมดวิเคราะห์เข้าถึงรายจุด (pgRouting)'}
+          {activeTab === 'dashboard' ? 'ภาพรวมการเข้าถึง · Network Service Area' : 'วิเคราะห์เข้าถึงรายจุด · Shortest-path network'}
         </div>
+
+        {activeTab === 'dashboard' && (
+          <div className="coverage-map-legend" aria-label="คำอธิบายสีความครอบคลุม">
+            <div><span>Coverage score</span><strong>{ACCESSIBILITY_PALETTE[dashboardFocusCategory]?.name}</strong></div>
+            <ul>
+              <li><i style={{ background: '#ef4444' }} />0–20</li>
+              <li><i style={{ background: '#fb923c' }} />20–40</li>
+              <li><i style={{ background: '#facc15' }} />40–60</li>
+              <li><i style={{ background: '#38bdf8' }} />60–80</li>
+              <li><i style={{ background: '#14b8a6' }} />80–100%</li>
+            </ul>
+          </div>
+        )}
       </section>
 
       {/* CONTROL SIDEBAR */}
@@ -1020,50 +1207,42 @@ function App() {
             <Radar size={25} />
           </div>
           <div>
-            <p className="eyebrow">Bangkok GIS Tool</p>
-            <h1>วิเคราะห์พื้นที่บริการ</h1>
+            <p className="eyebrow">Bangkok Service Intelligence</p>
+            <h1>เมืองเข้าถึงได้ กรุงเทพฯ</h1>
           </div>
+          <span className="brand-version">v2.0</span>
         </div>
 
         {/* TAB SWITCHER */}
-        <div className="tab-switcher" style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <div className="tab-switcher">
           <button 
             className={`tab-btn ${activeTab === 'dashboard' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('dashboard')}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.82rem',
-              backgroundColor: activeTab === 'dashboard' ? '#0f766e' : basemapMode === 'dark' ? '#1e293b' : '#e2e8f0',
-              color: activeTab === 'dashboard' ? 'white' : basemapMode === 'dark' ? '#94a3b8' : '#64748b',
-              transition: 'all 0.2s ease',
-            }}
           >
-            🗺️ ชั้นข้อมูลบริการ
+            <BarChart3 size={16} />
+            <span>ภาพรวมผู้บริหาร</span>
           </button>
           <button 
             className={`tab-btn ${activeTab === 'analyze' ? 'is-active' : ''}`}
             onClick={() => setActiveTab('analyze')}
-            style={{
-              flex: 1,
-              padding: '10px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.82rem',
-              backgroundColor: activeTab === 'analyze' ? '#0f766e' : basemapMode === 'dark' ? '#1e293b' : '#e2e8f0',
-              color: activeTab === 'analyze' ? 'white' : basemapMode === 'dark' ? '#94a3b8' : '#64748b',
-              transition: 'all 0.2s ease',
-            }}
           >
-            📍 วิเคราะห์รายจุด
+            <MapPin size={16} />
+            <span>วิเคราะห์รายจุด</span>
           </button>
         </div>
+
+        {activeTab === 'dashboard' && (
+          <ExecutiveDashboard
+            stats={dashboardStats}
+            mode={dashboardTravelMode}
+            focusCategory={dashboardFocusCategory}
+            selectedDistrictCode={selectedDistrictCode}
+            onModeChange={setDashboardTravelMode}
+            onFocusCategoryChange={setDashboardFocusCategory}
+            onSelectDistrict={setSelectedDistrictCode}
+            onZoomDistrict={handleZoomDistrict}
+          />
+        )}
 
         {activeTab === 'analyze' && (
           /* DYNAMIC ANALYSIS PANEL */
@@ -1164,6 +1343,12 @@ function App() {
                     <span style={{ fontSize: '0.75rem', color: '#64748b' }}>ไม่พาดผ่านเขตใด</span>
                   )}
                 </div>
+
+                <NearbyPlaces
+                  places={nearbyPlaces}
+                  loading={isLoadingNearbyPlaces}
+                  onSelect={handleSelectNearbyPlace}
+                />
 
                 <button
                   onClick={handleExportGeoJSON}

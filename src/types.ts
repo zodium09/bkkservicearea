@@ -1,5 +1,3 @@
-import { Feature, Geometry } from 'geojson';
-
 export interface BmaLayer {
   id: number;
   name: string;
